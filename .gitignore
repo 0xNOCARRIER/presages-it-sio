@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Base de données (contient comptes + historique des joueurs)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Éditeurs
+.vscode/
+.idea/
+.DS_Store
+
+# Secrets éventuels
+.env
+*.secret
