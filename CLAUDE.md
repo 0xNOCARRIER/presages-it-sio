@@ -111,8 +111,10 @@ Implémentation web du jeu de société **Présages** (jeu de cartes français) 
 - Match en 2 manches gagnantes
 
 ### Interface
-- Cartes 110×160px, polices lisibles (valeur 1.25rem, nom 0.88rem, effet 0.72rem)
-- Indicateur de tour animé (pulse quand c'est à toi)
+- **Échelle globale ×1.5** : root font-size à 24px (au lieu de 16px), tous les rem sont agrandis proportionnellement.
+- Cartes **165×240px** (pip 18px, padding 9px).
+- Panels agrandis : auth 570px, home 600px, teams 270px, chat 345px, colonne droite lobby 450px, overlays (trick-review 840, interaction 720, secret 810, roundend 570).
+- Indicateur de tour animé (pulse quand c'est à toi) — **taille 2.4rem en pulse** ("✦ À vous de jouer !" rendu bien visible), 1.2rem sinon.
 - Bannière animée au gagnant du pli + cartes gagnantes qui brillent, perdantes qui s'estompent
 - **État `trick_review`** : overlay de 5 secondes après le dernier coup du pli, montrant :
   - Le gagnant
@@ -121,6 +123,13 @@ Implémentation web du jeu de société **Présages** (jeu de cartes français) 
   - Barre de progression décompte 5s
   - **Bouton "Continuer ▶" visible uniquement pour l'hôte** pour passer avant la fin du compte à rebours
 - Overlay de sélection pour les effets interactifs (cible, carte, choix faible/fort)
+
+### Code admin (dev)
+- Un **code admin unique** est généré au premier démarrage et stocké dans la table `app_config` (clé `admin_join_code`).
+- Format : `ADMIN-XXXXXXXX` (8 caractères hex), persisté — le même code est réutilisé à chaque redémarrage.
+- **Affiché dans les logs** au démarrage : `[Présages] Code admin (dev) : ADMIN-XXXXXXXX`.
+- Exposé en mémoire via la constante Python `ADMIN_JOIN_CODE` (dans `main.py`).
+- **Pour l'instant, aucune logique de salon/admin n'est branchée** — le code est juste créé et persisté. La logique de rejoindre une partie en admin / debug / administration sera ajoutée plus tard.
 
 ### Mode développeur (solo)
 - Endpoint `POST /api/rooms/dev` crée un salon avec 3 bots : **Arcana**, **Sibyl**, **Morrigan**
