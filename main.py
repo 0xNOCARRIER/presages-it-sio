@@ -30,7 +30,10 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+ADMIN_JOIN_CODE: str = ""
+
 def init_db():
+    global ADMIN_JOIN_CODE
     db = get_db()
     db.executescript("""
         CREATE TABLE IF NOT EXISTS users (
@@ -50,9 +53,21 @@ def init_db():
             played_at INTEGER NOT NULL,
             FOREIGN KEY (player_id) REFERENCES users(id)
         );
+        CREATE TABLE IF NOT EXISTS app_config (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
     """)
+    row = db.execute("SELECT value FROM app_config WHERE key='admin_join_code'").fetchone()
+    if row:
+        ADMIN_JOIN_CODE = row["value"]
+    else:
+        ADMIN_JOIN_CODE = "ADMIN-" + uuid.uuid4().hex[:8].upper()
+        db.execute("INSERT INTO app_config (key,value) VALUES ('admin_join_code',?)",
+                   (ADMIN_JOIN_CODE,))
     db.commit()
     db.close()
+    print(f"[Présages] Code admin (dev) : {ADMIN_JOIN_CODE}", flush=True)
 
 # ─────────────────────────────────────────────────────────────────
 # DECK OFFICIEL 35 CARTES
