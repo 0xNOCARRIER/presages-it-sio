@@ -30,77 +30,56 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-ADMIN_JOIN_CODE: str = ""
-
 def init_db():
-    global ADMIN_JOIN_CODE
     db = get_db()
     db.executescript("""
         CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
+            id            TEXT PRIMARY KEY,
+            username      TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
-            created_at INTEGER NOT NULL
+            is_admin      INTEGER NOT NULL DEFAULT 0,
+            is_banned     INTEGER NOT NULL DEFAULT 0,
+            created_at    INTEGER NOT NULL
         );
         CREATE TABLE IF NOT EXISTS game_history (
-            id TEXT PRIMARY KEY,
-            player_id TEXT NOT NULL,
-            game_id TEXT NOT NULL,
-            result TEXT NOT NULL,
-            players TEXT NOT NULL,
-            teams TEXT NOT NULL,
-            duration INTEGER NOT NULL,
-            played_at INTEGER NOT NULL,
+            id         TEXT PRIMARY KEY,
+            player_id  TEXT NOT NULL,
+            game_id    TEXT NOT NULL,
+            result     TEXT NOT NULL,
+            players    TEXT NOT NULL,
+            teams      TEXT NOT NULL,
+            duration   INTEGER NOT NULL,
+            played_at  INTEGER NOT NULL,
             FOREIGN KEY (player_id) REFERENCES users(id)
         );
-        CREATE TABLE IF NOT EXISTS app_config (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
     """)
-    row = db.execute("SELECT value FROM app_config WHERE key='admin_join_code'").fetchone()
-    if row:
-        ADMIN_JOIN_CODE = row["value"]
-    else:
-        ADMIN_JOIN_CODE = "ADMIN-" + uuid.uuid4().hex[:8].upper()
-        db.execute("INSERT INTO app_config (key,value) VALUES ('admin_join_code',?)",
-                   (ADMIN_JOIN_CODE,))
+    # Migrations : ajouter colonnes si elles n'existent pas encore
+    cols = [r[1] for r in db.execute("PRAGMA table_info(users)").fetchall()]
+    if "is_admin"  not in cols:
+        db.execute("ALTER TABLE users ADD COLUMN is_admin  INTEGER NOT NULL DEFAULT 0")
+    if "is_banned" not in cols:
+        db.execute("ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0")
     db.commit()
+
+    # Compte admin par défaut
+    existing = db.execute("SELECT id FROM users WHERE username='admin'").fetchone()
+    if not existing:
+        db.execute(
+            "INSERT INTO users (id,username,password_hash,is_admin,is_banned,created_at) VALUES (?,?,?,1,0,?)",
+            (str(uuid.uuid4()), "admin", hash_pw("presages"), int(time.time()))
+        )
+        db.commit()
+    else:
+        # S'assurer que admin est bien admin
+        db.execute("UPDATE users SET is_admin=1 WHERE username='admin'")
+        db.commit()
     db.close()
-    print(f"[Présages] Code admin (dev) : {ADMIN_JOIN_CODE}", flush=True)
 
 # ─────────────────────────────────────────────────────────────────
 # DECK OFFICIEL 35 CARTES
 # ─────────────────────────────────────────────────────────────────
-#
-# effect_type:
-#   none            – aucun effet
-#   highest_own     – défausse la carte de même couleur de plus FORTE valeur en jeu
-#   lowest_own      – défausse la carte de même couleur de plus FAIBLE valeur en jeu
-#   if_other_same   – défausse si au moins UNE AUTRE carte de même couleur est en jeu
-#   if_color        – défausse si au moins une carte de la couleur `param` est en jeu
-#   if_lowest       – défausse si c'est la carte de plus faible valeur parmi toutes
-#   if_lone_color   – défausse si c'est la SEULE carte de sa couleur
-#   if_absolu       – défausse si un Absolu est en jeu
-#   unbreakable     – ne peut jamais être défaussée sauf si elle remporte le tour
-#   chain           – si défaussée → le joueur défausse une carte supplémentaire de sa main
-#   lowest_wins     – la carte de plus faible valeur remporte le tour (⏳)
-#   loi             – ⚡ les joueurs suivants jouent < ou > 15
-#   lowest_all      – défausse la carte de plus faible valeur (toutes couleurs)
-#   all_colors      – compte comme toutes les couleurs (vert/jaune/rouge/bleu)
-#   orgueil         – le joueur à gauche commence le prochain tour
-#   reve            – ⚡ pose devant un joueur qui doit rejouer
-#   jalousie        – ⚡ échange cette carte avec une autre déjà en jeu
-#   secret          – ⚡ montrer/voir une carte de main
-#   lowest_red      – défausse la carte ROUGE de plus faible valeur
-#   ignore_highest  – la valeur la plus forte est ignorée pour déterminer le gagnant
-#   all_jaune       – défausse TOUTES les cartes jaunes en jeu
-#   colere          – ⚡ renvoie en main une carte déjà jouée; ce joueur rejoue
-#   trahison        – ⚡ échange une carte de main avec une carte déjà en jeu
-#   absolu          – ⚡ échange une carte de main avec un autre joueur
 
 DECK_DEFINITION = [
-    # ── VERT ─────────────────────────────────────────────────────
     {"id":"v1",  "value":1,  "color":"vert",  "name":"La Vie",       "effect_type":"highest_own",   "effect_param":None,    "is_absolu":False},
     {"id":"v2",  "value":2,  "color":"vert",  "name":"L'Amour",      "effect_type":"if_other_same", "effect_param":None,    "is_absolu":False},
     {"id":"v3",  "value":3,  "color":"vert",  "name":"L'Amitié",     "effect_type":"if_color",      "effect_param":"jaune", "is_absolu":False},
@@ -109,7 +88,6 @@ DECK_DEFINITION = [
     {"id":"v6",  "value":6,  "color":"vert",  "name":"L'Espoir",     "effect_type":"if_lowest",     "effect_param":None,    "is_absolu":False},
     {"id":"v7",  "value":7,  "color":"vert",  "name":"Le Printemps", "effect_type":"if_lone_color", "effect_param":None,    "is_absolu":False},
     {"id":"v8",  "value":8,  "color":"vert",  "name":"La Mort",      "effect_type":"lowest_own",    "effect_param":None,    "is_absolu":False},
-    # ── JAUNE ────────────────────────────────────────────────────
     {"id":"j9",  "value":9,  "color":"jaune", "name":"Le Mensonge",  "effect_type":"highest_own",   "effect_param":None,    "is_absolu":False},
     {"id":"j10", "value":10, "color":"jaune", "name":"L'Énigme",     "effect_type":"if_absolu",     "effect_param":None,    "is_absolu":False},
     {"id":"j11", "value":11, "color":"jaune", "name":"L'Été",        "effect_type":"if_lone_color", "effect_param":None,    "is_absolu":False},
@@ -118,9 +96,7 @@ DECK_DEFINITION = [
     {"id":"j14", "value":14, "color":"jaune", "name":"Le Miroir",    "effect_type":"lowest_wins",   "effect_param":None,    "is_absolu":False},
     {"id":"j15", "value":15, "color":"jaune", "name":"La Loi",       "effect_type":"loi",           "effect_param":None,    "is_absolu":False},
     {"id":"j16", "value":16, "color":"jaune", "name":"La Vérité",    "effect_type":"lowest_own",    "effect_param":None,    "is_absolu":False},
-    # ── MULTI (toutes couleurs) ───────────────────────────────────
     {"id":"m17", "value":17, "color":"multi", "name":"La Malice",    "effect_type":"all_colors",    "effect_param":None,    "is_absolu":False},
-    # ── ROUGE ────────────────────────────────────────────────────
     {"id":"r18", "value":18, "color":"rouge", "name":"Le Jour",      "effect_type":"highest_own",   "effect_param":None,    "is_absolu":False},
     {"id":"r19", "value":19, "color":"rouge", "name":"L'Automne",    "effect_type":"if_lone_color", "effect_param":None,    "is_absolu":False},
     {"id":"r20", "value":20, "color":"rouge", "name":"L'Harmonie",   "effect_type":"lowest_all",    "effect_param":None,    "is_absolu":False},
@@ -129,12 +105,10 @@ DECK_DEFINITION = [
     {"id":"r23", "value":23, "color":"rouge", "name":"La Jalousie",  "effect_type":"jalousie",      "effect_param":None,    "is_absolu":False},
     {"id":"r24", "value":24, "color":"rouge", "name":"Le Secret",    "effect_type":"secret",        "effect_param":None,    "is_absolu":False},
     {"id":"r25", "value":25, "color":"rouge", "name":"La Nuit",      "effect_type":"lowest_own",    "effect_param":None,    "is_absolu":False},
-    # ── BLEU ─────────────────────────────────────────────────────
     {"id":"b26", "value":26, "color":"bleu",  "name":"La Tristesse", "effect_type":"ignore_highest","effect_param":None,    "is_absolu":False},
     {"id":"b27", "value":27, "color":"bleu",  "name":"L'Hiver",      "effect_type":"all_jaune",     "effect_param":None,    "is_absolu":False},
     {"id":"b28", "value":28, "color":"bleu",  "name":"La Colère",    "effect_type":"colere",        "effect_param":None,    "is_absolu":False},
     {"id":"b29", "value":29, "color":"bleu",  "name":"La Trahison",  "effect_type":"trahison",      "effect_param":None,    "is_absolu":False},
-    # ── ABSOLUS (couleur bleu) ────────────────────────────────────
     {"id":"a30", "value":30, "color":"bleu",  "name":"L'Absolu",     "effect_type":"absolu",        "effect_param":None,    "is_absolu":True},
     {"id":"a31", "value":31, "color":"bleu",  "name":"L'Absolu",     "effect_type":"absolu",        "effect_param":None,    "is_absolu":True},
     {"id":"a32", "value":32, "color":"bleu",  "name":"L'Absolu",     "effect_type":"absolu",        "effect_param":None,    "is_absolu":True},
@@ -144,6 +118,8 @@ DECK_DEFINITION = [
 ]
 
 INTERACTIVE_EFFECTS = {"loi", "reve", "jalousie", "secret", "colere", "trahison", "absolu"}
+
+def hash_pw(pw): return hashlib.sha256(pw.encode()).hexdigest()
 
 def build_deck():
     return [dict(c) for c in DECK_DEFINITION]
@@ -156,16 +132,17 @@ def effective_colors(card):
 def deal_cards(deck, players, n):
     absolus  = [c for c in deck if c["is_absolu"]]
     regulars = [c for c in deck if not c["is_absolu"]]
+    # Garantir que le deck ne contient pas de doublons
+    seen_ids = set()
+    absolus  = [c for c in absolus  if c["id"] not in seen_ids and not seen_ids.add(c["id"])]
+    regulars = [c for c in regulars if c["id"] not in seen_ids and not seen_ids.add(c["id"])]
     random.shuffle(absolus)
     random.shuffle(regulars)
-
     hands = {p: [] for p in players}
     absolu_dealt = {}
-
     for i, pid in enumerate(players):
         hands[pid].append(absolus[i])
         absolu_dealt[pid] = absolus[i]
-
     remaining = absolus[n:] + regulars
     random.shuffle(remaining)
     idx = 0
@@ -173,7 +150,6 @@ def deal_cards(deck, players, n):
         while len(hands[pid]) < 5 and idx < len(remaining):
             hands[pid].append(remaining[idx])
             idx += 1
-
     return hands, absolu_dealt
 
 def form_teams(players, absolu_cards):
@@ -191,17 +167,12 @@ def form_teams(players, absolu_cards):
 def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
     cards = list(played.values())
     msgs  = []
-
     all_colors_in_play = set()
     for c in cards:
         all_colors_in_play |= effective_colors(c)
-
-    # La Tristesse: ignore la plus forte valeur
     ignore_highest = any(c["effect_type"] == "ignore_highest" for c in cards)
     if ignore_highest:
         msgs.append("🌧️ La Tristesse : la carte de plus forte valeur est ignorée.")
-
-    # Le Miroir: la plus faible gagne
     lowest_wins = any(c["effect_type"] == "lowest_wins" for c in cards)
     if lowest_wins:
         msgs.append("🪞 Le Miroir : la carte de plus FAIBLE valeur remporte le tour !")
@@ -227,10 +198,8 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
         eff = card["effect_type"]
         if cid in to_discard:
             continue
-
         if eff == "unbreakable":
-            pass  # never discarded unless winner
-
+            pass
         elif eff in ("highest_own", "lowest_own"):
             col = card["color"]
             same = [(p2, c2) for p2, c2 in played.items() if col in effective_colors(c2)]
@@ -239,51 +208,39 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
                 to_discard.add(target[1]["id"])
                 label = "forte" if eff == "highest_own" else "faible"
                 msgs.append(f"→ {card['name']} défausse {target[1]['name']} (plus {label} {col}).")
-
         elif eff == "if_other_same":
             col = card["color"]
             others = [c2 for p2, c2 in played.items()
                       if col in effective_colors(c2) and c2["id"] != cid]
             if others:
                 to_discard.add(cid)
-
         elif eff == "if_color":
             if card["effect_param"] in all_colors_in_play:
                 to_discard.add(cid)
-
         elif eff == "if_lowest":
             if card["value"] == min(c2["value"] for c2 in cards):
                 to_discard.add(cid)
-
         elif eff == "if_lone_color":
             col = card["color"]
             if sum(1 for c2 in cards if col in effective_colors(c2)) == 1:
                 to_discard.add(cid)
-
         elif eff == "if_absolu":
             if any(c2["is_absolu"] for c2 in cards):
                 to_discard.add(cid)
-
         elif eff == "lowest_all":
             bot = min(played.items(), key=lambda x: x[1]["value"])
             to_discard.add(bot[1]["id"])
             msgs.append(f"→ L'Harmonie défausse {bot[1]['name']} (plus faible en jeu).")
-
         elif eff == "all_jaune":
             jaunes = [c2 for c2 in cards if "jaune" in effective_colors(c2)]
             for jc in jaunes:
                 to_discard.add(jc["id"])
             if jaunes:
                 msgs.append(f"→ L'Hiver défausse {len(jaunes)} carte(s) jaune(s).")
-
-        elif eff == "all_colors":
-            pass  # only affects color counting
-
-        elif eff in ("orgueil", "loi", "reve", "jalousie", "secret",
+        elif eff in ("all_colors", "orgueil", "loi", "reve", "jalousie", "secret",
                      "colere", "trahison", "absolu", "none"):
             pass
 
-    # La Chance: chain discard
     chain_discards = {}
     for pid, card in played.items():
         if card["effect_type"] == "chain" and card["id"] in to_discard:
@@ -293,7 +250,6 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
                 chain_discards[pid] = extra
                 msgs.append(f"⛓️ La Chance : défausse aussi {extra['name']}.")
 
-    # L'Orgueil: next leader = left of orgueil player
     next_leader = winner_pid
     for pid, card in played.items():
         if card["effect_type"] == "orgueil":
@@ -301,16 +257,12 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
             msgs.append("👑 L'Orgueil : le joueur à gauche commencera.")
             break
 
-    returned   = {pid: card for pid, card in played.items() if card["id"] not in to_discard}
-    discarded  = [card for card in played.values() if card["id"] in to_discard]
-
+    returned  = {pid: card for pid, card in played.items() if card["id"] not in to_discard}
+    discarded = [card for card in played.values() if card["id"] in to_discard]
     return {
-        "winner":        winner_pid,
-        "discarded":     discarded,
-        "returned":      returned,
-        "chain_discards":chain_discards,
-        "next_leader":   next_leader,
-        "messages":      msgs,
+        "winner": winner_pid, "discarded": discarded,
+        "returned": returned, "chain_discards": chain_discards,
+        "next_leader": next_leader, "messages": msgs,
     }
 
 def check_win_condition(hands, teams):
@@ -356,6 +308,8 @@ class GameRoom:
         self.loi_constraint      = None
         self.trick_review_result = None
         self._review_task        = None
+        self.last_trick          = None
+        self.discard_pile        = []
 
     def add_player(self, pid, username):
         self.players[pid] = {"username": username, "ws": None}
@@ -382,37 +336,29 @@ class GameRoom:
             if pid not in self.players:
                 continue
             hand = self.hands.get(pid, [])
-            if pid == for_pid:
-                hand_data = hand
-            else:
-                hand_data = [{"id": c["id"], "back": True} for c in hand]
+            hand_data = hand if pid == for_pid else [{"id": c["id"], "back": True} for c in hand]
             players_info.append({
-                "id": pid,
-                "username": self.players[pid]["username"],
-                "hand": hand_data,
-                "hand_count": len(hand),
+                "id": pid, "username": self.players[pid]["username"],
+                "hand": hand_data, "hand_count": len(hand),
                 "is_you": pid == for_pid,
                 "absolu": self.absolu_dealt.get(pid),
                 "is_bot": pid.startswith("bot_"),
             })
         return {
-            "room_id":    self.room_id,
-            "state":      self.state,
-            "round_num":  self.round_num,
-            "players":    players_info,
-            "teams":      team_info,
+            "room_id": self.room_id, "state": self.state, "round_num": self.round_num,
+            "players": players_info, "teams": team_info,
             "current_trick": self.current_trick,
-            "trick_leader":  self.trick_leader,
-            "trick_order":   self.trick_order,
-            "next_to_play":  self._next_to_play(),
-            "host_id":    self.host_id,
-            "dev_mode":   self.dev_mode,
+            "trick_leader": self.trick_leader, "trick_order": self.trick_order,
+            "next_to_play": self._next_to_play(),
+            "host_id": self.host_id, "dev_mode": self.dev_mode,
             "pending_interaction": self.pending_interaction,
-            "loi_constraint":      self.loi_constraint,
-            "trick_review":        self.trick_review_result,
+            "loi_constraint": self.loi_constraint,
+            "trick_review": self.trick_review_result,
+            "last_trick": self.last_trick,
+            "discard_pile": self.discard_pile[-20:],
         }
 
-rooms: dict    = {}
+rooms: dict = {}
 sessions: dict = {}
 player_room: dict = {}
 BOT_NAMES = ["Arcana", "Sibyl", "Morrigan"]
@@ -423,53 +369,47 @@ BOT_NAMES = ["Arcana", "Sibyl", "Morrigan"]
 
 async def broadcast(room, msg, exclude=None):
     for pid, info in room.players.items():
-        if pid == exclude:
-            continue
+        if pid == exclude: continue
         ws = info.get("ws")
         if ws:
-            try:
-                await ws.send_json(msg)
-            except Exception:
-                info["ws"] = None
+            try: await ws.send_json(msg)
+            except: info["ws"] = None
 
 async def send_state(room):
     for pid, info in room.players.items():
         ws = info.get("ws")
         if ws:
-            try:
-                await ws.send_json({"type": "state", "data": room.public_state(for_pid=pid)})
-            except Exception:
-                info["ws"] = None
+            try: await ws.send_json({"type": "state", "data": room.public_state(for_pid=pid)})
+            except: info["ws"] = None
 
 async def send_to(room, pid, msg):
     ws = room.players.get(pid, {}).get("ws")
     if ws:
-        try:
-            await ws.send_json(msg)
-        except Exception:
-            pass
+        try: await ws.send_json(msg)
+        except: pass
 
 def save_history(room, wt_idx):
     db = get_db()
-    pi = json.dumps({p: room.players[p]["username"] for p in room.players})
-    ti = json.dumps([[p for p in t] for t in room.teams])
+    pi  = json.dumps({p: room.players[p]["username"] for p in room.players})
+    ti  = json.dumps([[p for p in t] for t in room.teams])
     dur = int(time.time()) - room.started_at
     for pid in room.players:
+        if pid.startswith("bot_"): continue
         tidx = next((i for i, t in enumerate(room.teams) if pid in t), -1)
         res  = "victoire" if tidx == wt_idx else "défaite"
-        db.execute("INSERT INTO game_history (id,player_id,game_id,result,players,teams,duration,played_at) VALUES (?,?,?,?,?,?,?,?)",
-                   (str(uuid.uuid4()), pid, room.game_id, res, pi, ti, dur, int(time.time())))
+        db.execute(
+            "INSERT INTO game_history (id,player_id,game_id,result,players,teams,duration,played_at) VALUES (?,?,?,?,?,?,?,?)",
+            (str(uuid.uuid4()), pid, room.game_id, res, pi, ti, dur, int(time.time()))
+        )
     db.commit(); db.close()
 
 def _rotate(order, start):
-    if start not in order:
-        return order
+    if start not in order: return order
     i = order.index(start)
     return order[i:] + order[:i]
 
 def _left_of(order, pid):
-    if pid not in order:
-        return order[0]
+    if pid not in order: return order[0]
     return order[(order.index(pid) + 1) % len(order)]
 
 # ─────────────────────────────────────────────────────────────────
@@ -495,32 +435,40 @@ async def _resolve_and_advance(room: GameRoom):
     for p, extra in result["chain_discards"].items():
         room.hands[p] = [c for c in room.hands[p] if c["id"] != extra["id"]]
 
-    parts = [f"✅ {winner_name} remporte le pli !"] + result["messages"]
-    full_msg = " ".join(parts)
+    # Accumuler la pile de défausse
+    room.discard_pile.extend(result["discarded"])
+    for extra in result["chain_discards"].values():
+        if not any(c["id"] == extra["id"] for c in room.discard_pile):
+            room.discard_pile.append(extra)
 
+    # Sauvegarder le pli pour affichage ultérieur
+    room.last_trick = {
+        "winner_pid": winner_pid, "winner_name": winner_name,
+        "played": {p: c for p, c in room.current_trick.items()},
+        "discarded_ids": list(discarded_ids),
+        "chain_discard_ids": [c["id"] for c in result["chain_discards"].values()],
+        "messages": result["messages"],
+    }
+
+    full_msg = " ".join([f"✅ {winner_name} remporte le pli !"] + result["messages"])
     room.state = "trick_review"
     room.trick_review_result = {
-        "winner_pid":   winner_pid,
-        "winner_name":  winner_name,
-        "discarded":    result["discarded"],
-        "chain_discards": result["chain_discards"],
-        "messages":     result["messages"],
-        "next_leader":  result["next_leader"],
-        "msg":          full_msg,
+        "winner_pid": winner_pid, "winner_name": winner_name,
+        "discarded": result["discarded"], "chain_discards": result["chain_discards"],
+        "messages": result["messages"], "next_leader": result["next_leader"], "msg": full_msg,
     }
+    # En mode dev auto-continue après 2s, sinon l'hôte clique sur Continuer
+    auto_ms = 2000 if room.dev_mode else 0
     await broadcast(room, {
-        "type":           "trick_review",
-        "winner_pid":     winner_pid,
-        "winner_name":    winner_name,
-        "discarded":      result["discarded"],
+        "type": "trick_review", "winner_pid": winner_pid, "winner_name": winner_name,
+        "discarded": result["discarded"],
         "chain_discards": {p: c for p, c in result["chain_discards"].items()},
-        "messages":       result["messages"],
-        "msg":            full_msg,
-        "auto_continue_ms": 5000,
+        "messages": result["messages"], "msg": full_msg, "auto_continue_ms": auto_ms,
     })
     await send_state(room)
     await broadcast(room, {"type": "chat", "msg": full_msg})
-    room._review_task = asyncio.create_task(_auto_continue_trick(room, 5.0))
+    if auto_ms > 0:
+        room._review_task = asyncio.create_task(_auto_continue_trick(room, auto_ms / 1000))
 
 async def _auto_continue_trick(room: GameRoom, delay: float):
     await asyncio.sleep(delay)
@@ -528,11 +476,9 @@ async def _auto_continue_trick(room: GameRoom, delay: float):
         await _finalize_trick(room)
 
 async def _finalize_trick(room: GameRoom):
-    if room.state != "trick_review":
-        return
+    if room.state != "trick_review": return
     t = getattr(room, "_review_task", None)
-    if t and not t.done():
-        t.cancel()
+    if t and not t.done(): t.cancel()
     result = room.trick_review_result
     wt = check_win_condition(room.hands, room.teams)
     if wt is not None:
@@ -550,9 +496,9 @@ async def _finalize_trick(room: GameRoom):
             room.state = "roundend"
             await send_state(room)
         return
-    room.trick_leader   = result["next_leader"]
-    room.trick_order    = _rotate(room.player_order, result["next_leader"])
-    room.current_trick  = {}
+    room.trick_leader  = result["next_leader"]
+    room.trick_order   = _rotate(room.player_order, result["next_leader"])
+    room.current_trick = {}
     room.loi_constraint = None
     room.trick_review_result = None
     room.state = "playing"
@@ -569,14 +515,12 @@ def bot_choose_card(hand, current_trick, loi_constraint=None):
     colors_now = set()
     for c in played:
         colors_now |= effective_colors(c)
-
     valid = hand[:]
     if loi_constraint and played:
         d = loi_constraint["direction"]
         filtered = [c for c in hand if (d == "lower" and c["value"] < 15)
                     or (d == "higher" and c["value"] > 15)]
-        if filtered:
-            valid = filtered
+        if filtered: valid = filtered
 
     def score(card):
         s = card["value"]
@@ -597,26 +541,21 @@ def bot_choose_card(hand, current_trick, loi_constraint=None):
 async def run_bots(room: GameRoom):
     while room.state == "playing":
         nxt = room._next_to_play()
-        if not nxt or not nxt.startswith("bot_"):
-            break
+        if not nxt or not nxt.startswith("bot_"): break
         await asyncio.sleep(0.85)
         hand = room.hands.get(nxt, [])
-        if not hand:
-            break
+        if not hand: break
         card = bot_choose_card(hand, room.current_trick, room.loi_constraint)
         await _play_card_logic(room, nxt, card)
-        if room.state != "playing":
-            break
+        if room.state != "playing": break
 
 async def _play_card_logic(room: GameRoom, pid: str, card: dict):
     room.current_trick[pid] = card
     uname = room.players[pid]["username"]
     await broadcast(room, {"type": "chat", "msg": f"🃏 {uname} joue {card['name']}."})
-
-    eff = card["effect_type"]
+    eff    = card["effect_type"]
     is_bot = pid.startswith("bot_")
 
-    # ── Effets immédiats interactifs ─────────────────────────────
     if eff in INTERACTIVE_EFFECTS and not is_bot:
         room.state = "interactive"
         room.pending_interaction = {"type": eff, "actor_pid": pid, "card_id": card["id"]}
@@ -631,26 +570,22 @@ async def _play_card_logic(room: GameRoom, pid: str, card: dict):
             "absolu":   "L'Absolu : échangez une carte de votre main avec celle d'un joueur.",
         }
         await send_to(room, pid, {
-            "type":        "interaction_required",
-            "interaction": eff,
-            "message":     prompts.get(eff, "Choisissez une action."),
+            "type": "interaction_required", "interaction": eff,
+            "message": prompts.get(eff, "Choisissez une action."),
             "played_cards": {p: c for p, c in room.current_trick.items()},
             "players": [{"id": p, "username": room.players[p]["username"]}
                         for p in room.player_order if p != pid and p in room.players],
         })
-        return  # wait for interaction_response
+        return
 
     if eff == "loi":
-        # Bot or dev: default constraint = lower
         room.loi_constraint = {"direction": "lower", "threshold": 15}
         await broadcast(room, {"type": "chat",
             "msg": "⚖️ La Loi : les joueurs suivants doivent jouer une carte < 15 (si possible)."})
-
     elif eff in INTERACTIVE_EFFECTS and (is_bot or room.dev_mode):
         await broadcast(room, {"type": "chat",
             "msg": f"🤖 {uname} ignore l'effet interactif de {card['name']} (auto)."})
 
-    # All played → resolve
     if len(room.current_trick) == len(room.players):
         await _resolve_and_advance(room)
         if room.state == "playing" and room.dev_mode:
@@ -673,16 +608,27 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
 
-def hash_pw(pw): return hashlib.sha256(pw.encode()).hexdigest()
-
 def get_current_user(session: str = Cookie(default=None)):
     if not session or session not in sessions:
         raise HTTPException(401, "Non authentifié")
     return sessions[session]
 
+def require_admin(pid: str = Depends(get_current_user)):
+    db = get_db()
+    row = db.execute("SELECT is_admin, is_banned FROM users WHERE id=?", (pid,)).fetchone()
+    db.close()
+    if not row or not row["is_admin"] or row["is_banned"]:
+        raise HTTPException(403, "Accès réservé aux administrateurs")
+    return pid
+
 class AuthBody(BaseModel):
     username: str
     password: str
+
+class AdminResetPwBody(BaseModel):
+    new_password: str
+
+# ── Auth ──────────────────────────────────────────────────────────
 
 @app.post("/api/register")
 def register(body: AuthBody):
@@ -690,27 +636,35 @@ def register(body: AuthBody):
         raise HTTPException(400, "Nom ou mot de passe trop court (min 4 car.)")
     db = get_db(); uid = str(uuid.uuid4())
     try:
-        db.execute("INSERT INTO users (id,username,password_hash,created_at) VALUES (?,?,?,?)",
-                   (uid, body.username.strip(), hash_pw(body.password), int(time.time())))
+        db.execute(
+            "INSERT INTO users (id,username,password_hash,is_admin,is_banned,created_at) VALUES (?,?,?,0,0,?)",
+            (uid, body.username.strip(), hash_pw(body.password), int(time.time()))
+        )
         db.commit()
     except Exception:
         raise HTTPException(400, "Nom d'utilisateur déjà pris")
     finally:
         db.close()
     token = str(uuid.uuid4()); sessions[token] = uid
-    resp = JSONResponse({"ok": True, "username": body.username, "id": uid})
+    resp = JSONResponse({"ok": True, "username": body.username, "id": uid, "is_admin": False})
     resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=86400*30)
     return resp
 
 @app.post("/api/login")
 def login(body: AuthBody):
     db = get_db()
-    row = db.execute("SELECT * FROM users WHERE username=? AND password_hash=?",
-                     (body.username.strip(), hash_pw(body.password))).fetchone()
+    row = db.execute(
+        "SELECT * FROM users WHERE username=? AND password_hash=?",
+        (body.username.strip(), hash_pw(body.password))
+    ).fetchone()
     db.close()
-    if not row: raise HTTPException(401, "Identifiants incorrects")
+    if not row:
+        raise HTTPException(401, "Identifiants incorrects")
+    if row["is_banned"]:
+        raise HTTPException(403, "Compte banni")
     token = str(uuid.uuid4()); sessions[token] = row["id"]
-    resp = JSONResponse({"ok": True, "username": row["username"], "id": row["id"]})
+    resp = JSONResponse({"ok": True, "username": row["username"], "id": row["id"],
+                         "is_admin": bool(row["is_admin"])})
     resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=86400*30)
     return resp
 
@@ -722,17 +676,21 @@ def logout(session: str = Cookie(default=None)):
 @app.get("/api/me")
 def me(pid: str = Depends(get_current_user)):
     db = get_db()
-    row = db.execute("SELECT id,username FROM users WHERE id=?", (pid,)).fetchone()
+    row = db.execute("SELECT id,username,is_admin FROM users WHERE id=?", (pid,)).fetchone()
     db.close()
     if not row: raise HTTPException(404)
-    return {"id": row["id"], "username": row["username"]}
+    return {"id": row["id"], "username": row["username"], "is_admin": bool(row["is_admin"])}
 
 @app.get("/api/history")
 def history(pid: str = Depends(get_current_user)):
     db = get_db()
-    rows = db.execute("SELECT * FROM game_history WHERE player_id=? ORDER BY played_at DESC LIMIT 50",
-                      (pid,)).fetchall()
-    db.close(); return [dict(r) for r in rows]
+    rows = db.execute(
+        "SELECT * FROM game_history WHERE player_id=? ORDER BY played_at DESC LIMIT 50", (pid,)
+    ).fetchall()
+    db.close()
+    return [dict(r) for r in rows]
+
+# ── Rooms ─────────────────────────────────────────────────────────
 
 @app.post("/api/rooms")
 def create_room(pid: str = Depends(get_current_user)):
@@ -755,6 +713,116 @@ def get_room(room_id: str, pid: str = Depends(get_current_user)):
     if not room: raise HTTPException(404, "Salon introuvable")
     return room.public_state(for_pid=pid)
 
+# ── Classement ────────────────────────────────────────────────────
+
+@app.get("/api/leaderboard")
+def leaderboard(_pid: str = Depends(get_current_user)):
+    db = get_db()
+    rows = db.execute("""
+        SELECT u.id, u.username,
+               COUNT(CASE WHEN gh.result='victoire' THEN 1 END) AS wins,
+               COUNT(CASE WHEN gh.result='défaite'  THEN 1 END) AS losses,
+               COUNT(*) AS total
+        FROM users u
+        LEFT JOIN game_history gh ON gh.player_id = u.id
+        WHERE u.is_banned = 0
+        GROUP BY u.id
+        ORDER BY wins DESC, total DESC
+        LIMIT 50
+    """).fetchall()
+    db.close()
+    result = []
+    for r in rows:
+        total = r["total"]
+        ratio = round(r["wins"] / total * 100, 1) if total > 0 else 0
+        result.append({
+            "id": r["id"], "username": r["username"],
+            "wins": r["wins"], "losses": r["losses"],
+            "total": total, "ratio": ratio
+        })
+    return result
+
+# ── Admin ─────────────────────────────────────────────────────────
+
+@app.get("/api/admin/users")
+def admin_list_users(_admin: str = Depends(require_admin)):
+    db = get_db()
+    rows = db.execute("""
+        SELECT u.id, u.username, u.is_admin, u.is_banned, u.created_at,
+               COUNT(CASE WHEN gh.result='victoire' THEN 1 END) AS wins,
+               COUNT(CASE WHEN gh.result='défaite'  THEN 1 END) AS losses,
+               COUNT(*) AS total_games
+        FROM users u
+        LEFT JOIN game_history gh ON gh.player_id = u.id
+        GROUP BY u.id
+        ORDER BY u.created_at DESC
+    """).fetchall()
+    db.close()
+    return [dict(r) for r in rows]
+
+@app.post("/api/admin/users/{uid}/ban")
+def admin_ban(uid: str, admin_pid: str = Depends(require_admin)):
+    db = get_db()
+    row = db.execute("SELECT username, is_admin FROM users WHERE id=?", (uid,)).fetchone()
+    if not row: raise HTTPException(404)
+    if row["is_admin"]: raise HTTPException(400, "Impossible de bannir un administrateur")
+    db.execute("UPDATE users SET is_banned=1 WHERE id=?", (uid,))
+    db.commit(); db.close()
+    # Expulser les sessions actives du joueur banni
+    to_del = [t for t, p in sessions.items() if p == uid]
+    for t in to_del: del sessions[t]
+    return {"ok": True}
+
+@app.post("/api/admin/users/{uid}/unban")
+def admin_unban(uid: str, _admin: str = Depends(require_admin)):
+    db = get_db()
+    db.execute("UPDATE users SET is_banned=0 WHERE id=?", (uid,))
+    db.commit(); db.close()
+    return {"ok": True}
+
+@app.post("/api/admin/users/{uid}/reset-password")
+def admin_reset_pw(uid: str, body: AdminResetPwBody, _admin: str = Depends(require_admin)):
+    if len(body.new_password) < 4:
+        raise HTTPException(400, "Mot de passe trop court")
+    db = get_db()
+    db.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_pw(body.new_password), uid))
+    db.commit(); db.close()
+    return {"ok": True}
+
+@app.delete("/api/admin/users/{uid}")
+def admin_delete_user(uid: str, admin_pid: str = Depends(require_admin)):
+    db = get_db()
+    row = db.execute("SELECT username, is_admin FROM users WHERE id=?", (uid,)).fetchone()
+    if not row: raise HTTPException(404)
+    if row["is_admin"]: raise HTTPException(400, "Impossible de supprimer un administrateur")
+    db.execute("DELETE FROM game_history WHERE player_id=?", (uid,))
+    db.execute("DELETE FROM users WHERE id=?", (uid,))
+    db.commit(); db.close()
+    to_del = [t for t, p in sessions.items() if p == uid]
+    for t in to_del: del sessions[t]
+    return {"ok": True}
+
+@app.get("/api/admin/rooms")
+def admin_list_rooms(_admin: str = Depends(require_admin)):
+    result = []
+    for rid, room in rooms.items():
+        result.append({
+            "room_id": rid, "state": room.state,
+            "player_count": len(room.players),
+            "players": [room.players[p]["username"] for p in room.player_order],
+            "round_num": room.round_num,
+            "dev_mode": room.dev_mode,
+            "started_at": room.started_at,
+        })
+    return result
+
+@app.post("/api/admin/rooms/{rid}/close")
+def admin_close_room(rid: str, _admin: str = Depends(require_admin)):
+    room = rooms.get(rid.upper())
+    if not room: raise HTTPException(404)
+    rooms.pop(rid.upper(), None)
+    return {"ok": True}
+
 # ─────────────────────────────────────────────────────────────────
 # WEBSOCKET
 # ─────────────────────────────────────────────────────────────────
@@ -767,9 +835,10 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
         await websocket.close(code=4001); return
     pid = sessions[session]
     db = get_db()
-    row = db.execute("SELECT username FROM users WHERE id=?", (pid,)).fetchone()
+    row = db.execute("SELECT username, is_banned FROM users WHERE id=?", (pid,)).fetchone()
     db.close()
-    if not row: await websocket.close(code=4002); return
+    if not row or row["is_banned"]:
+        await websocket.close(code=4002); return
     username = row["username"]
     if room_id not in rooms: await websocket.close(code=4004); return
     room = rooms[room_id]
@@ -788,30 +857,26 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
             raw = await websocket.receive_json()
             act = raw.get("action")
 
-            # ── START ───────────────────────────────────────────────
             if act == "start" and pid == room.host_id:
                 n = len(room.players)
                 if n < 4 or n > 6:
                     await websocket.send_json({"type":"error","msg":f"Il faut 4–6 joueurs ({n} actuellement)"}); continue
                 deck = build_deck()
                 hands, absolu_dealt = deal_cards(deck, room.player_order, n)
-                room.hands = hands; room.absolu_dealt = absolu_dealt
-                room.round_num = 1
+                room.hands = hands; room.absolu_dealt = absolu_dealt; room.round_num = 1
                 room.teams     = form_teams(room.player_order, [absolu_dealt[p] for p in room.player_order])
                 room.team_wins = [0] * len(room.teams)
                 leader = max(absolu_dealt.items(), key=lambda x: x[1]["value"])[0]
                 room.trick_leader = leader
                 room.trick_order  = _rotate(room.player_order, leader)
-                room.current_trick = {}; room.loi_constraint = None
-                room.state = "playing"
+                room.current_trick = {}; room.loi_constraint = None; room.state = "playing"
+                room.discard_pile = []; room.last_trick = None
                 tag = " 🤖 [Mode Dev]" if room.dev_mode else ""
                 await send_state(room)
                 await broadcast(room, {"type":"chat",
                     "msg": f"🔮 La partie commence{tag} ! {room.players[leader]['username']} ouvre."})
-                if room.dev_mode:
-                    asyncio.create_task(run_bots(room))
+                if room.dev_mode: asyncio.create_task(run_bots(room))
 
-            # ── PLAY CARD ────────────────────────────────────────────
             elif act == "play_card":
                 if room.state != "playing":
                     await websocket.send_json({"type":"error","msg":"Ce n'est pas le moment de jouer."}); continue
@@ -823,7 +888,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 if not card:
                     await websocket.send_json({"type":"error","msg":"Carte introuvable."}); continue
                 if room.loi_constraint:
-                    d = room.loi_constraint["direction"]
+                    d   = room.loi_constraint["direction"]
                     can = any((d=="lower" and c["value"]<15) or (d=="higher" and c["value"]>15) for c in hand)
                     ok  = (d=="lower" and card["value"]<15) or (d=="higher" and card["value"]>15)
                     if can and not ok:
@@ -831,7 +896,6 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         await websocket.send_json({"type":"error","msg":f"La Loi : jouez une carte {suf}."}); continue
                 await _play_card_logic(room, pid, card)
 
-            # ── INTERACTION RESPONSE ─────────────────────────────────
             elif act == "interaction_response":
                 if room.state != "interactive": continue
                 pi = room.pending_interaction
@@ -840,11 +904,10 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
 
                 if itype == "loi":
                     direction = raw.get("direction", "lower")
-                    room.loi_constraint  = {"direction": direction, "threshold": 15}
+                    room.loi_constraint = {"direction": direction, "threshold": 15}
                     room.pending_interaction = None; room.state = "playing"
                     suf = "< 15" if direction == "lower" else "> 15"
-                    await broadcast(room, {"type":"chat",
-                        "msg": f"⚖️ La Loi : les joueurs suivants jouent {suf} si possible."})
+                    await broadcast(room, {"type":"chat","msg": f"⚖️ La Loi : les joueurs suivants jouent {suf} si possible."})
                     await send_state(room)
                     if room.dev_mode: asyncio.create_task(run_bots(room))
 
@@ -858,8 +921,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         room.current_trick[tpid] = my_card
                         room.hands[pid]  = [tc  if c["id"] == my_card["id"] else c for c in room.hands[pid]]
                         room.hands[tpid] = [my_card if c["id"] == tc["id"] else c for c in room.hands[tpid]]
-                        await broadcast(room, {"type":"chat",
-                            "msg":f"🔀 La Jalousie : {username} échange avec {room.players[tpid]['username']}."})
+                        await broadcast(room, {"type":"chat","msg":f"🔀 La Jalousie : {username} échange avec {room.players[tpid]['username']}."})
                     room.pending_interaction = None; room.state = "playing"
                     if len(room.current_trick) == len(room.players):
                         await _resolve_and_advance(room)
@@ -869,8 +931,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         if room.dev_mode: asyncio.create_task(run_bots(room))
 
                 elif itype == "secret":
-                    choice = raw.get("choice", "show_to")
-                    tpid   = raw.get("target_pid")
+                    choice = raw.get("choice", "show_to"); tpid = raw.get("target_pid")
                     if tpid and tpid in room.players:
                         if choice == "show_to":
                             await send_to(room, tpid, {"type":"secret_reveal","from":username,
@@ -892,29 +953,24 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
 
                 elif itype == "colere":
                     tcard_id = raw.get("target_card_id")
-                    tpid = next((p for p, c in room.current_trick.items()
-                                 if c["id"] == tcard_id and p != pid), None)
+                    tpid = next((p for p, c in room.current_trick.items() if c["id"] == tcard_id and p != pid), None)
                     if tpid:
                         room.current_trick.pop(tpid, None)
-                        await broadcast(room,{"type":"chat",
-                            "msg":f"😡 La Colère : {room.players[tpid]['username']} doit rejouer !"})
+                        await broadcast(room,{"type":"chat","msg":f"😡 La Colère : {room.players[tpid]['username']} doit rejouer !"})
                     room.pending_interaction = None; room.state = "playing"
                     await send_state(room)
                     if room.dev_mode: asyncio.create_task(run_bots(room))
 
                 elif itype == "trahison":
-                    my_cid  = raw.get("hand_card_id")
-                    tcard_id = raw.get("target_card_id")
-                    tpid = next((p for p, c in room.current_trick.items()
-                                 if c["id"] == tcard_id and p != pid), None)
-                    my_card   = next((c for c in room.hands.get(pid,[]) if c["id"] == my_cid), None)
+                    my_cid  = raw.get("hand_card_id"); tcard_id = raw.get("target_card_id")
+                    tpid = next((p for p, c in room.current_trick.items() if c["id"] == tcard_id and p != pid), None)
+                    my_card = next((c for c in room.hands.get(pid,[]) if c["id"] == my_cid), None)
                     if tpid and my_card:
                         tc = room.current_trick[tpid]
                         room.current_trick[tpid] = my_card
-                        room.hands[pid] = [tc if c["id"] == my_cid else c for c in room.hands[pid]]
+                        room.hands[pid]  = [tc if c["id"] == my_cid else c for c in room.hands[pid]]
                         room.hands[tpid] = [my_card if c["id"] == tc["id"] else c for c in room.hands[tpid]]
-                        await broadcast(room,{"type":"chat",
-                            "msg":f"🗡️ La Trahison : {username} substitue une carte à {room.players[tpid]['username']}."})
+                        await broadcast(room,{"type":"chat","msg":f"🗡️ La Trahison : {username} substitue une carte à {room.players[tpid]['username']}."})
                     room.pending_interaction = None; room.state = "playing"
                     if len(room.current_trick) == len(room.players):
                         await _resolve_and_advance(room)
@@ -924,12 +980,10 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         if room.dev_mode: asyncio.create_task(run_bots(room))
 
                 elif itype == "reve":
-                    tpid = raw.get("target_pid")
-                    my_card = room.current_trick.get(pid)
+                    tpid = raw.get("target_pid"); my_card = room.current_trick.get(pid)
                     if tpid and tpid in room.players and my_card and tpid not in room.current_trick:
                         room.current_trick[tpid] = my_card
-                        await broadcast(room,{"type":"chat",
-                            "msg":f"💭 Le Rêve : {username} pose sa carte devant {room.players[tpid]['username']}."})
+                        await broadcast(room,{"type":"chat","msg":f"💭 Le Rêve : {username} pose sa carte devant {room.players[tpid]['username']}."})
                     room.pending_interaction = None; room.state = "playing"
                     if len(room.current_trick) == len(room.players):
                         await _resolve_and_advance(room)
@@ -939,27 +993,22 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         if room.dev_mode: asyncio.create_task(run_bots(room))
 
                 elif itype == "absolu":
-                    tpid     = raw.get("target_pid")
-                    my_cid   = raw.get("my_card_id")
-                    their_cid = raw.get("their_card_id")
+                    tpid = raw.get("target_pid"); my_cid = raw.get("my_card_id"); their_cid = raw.get("their_card_id")
                     if tpid and my_cid and their_cid and tpid in room.players:
-                        mc = next((c for c in room.hands.get(pid,[])   if c["id"] == my_cid),   None)
-                        tc = next((c for c in room.hands.get(tpid,[])  if c["id"] == their_cid), None)
+                        mc = next((c for c in room.hands.get(pid,[])  if c["id"] == my_cid),    None)
+                        tc = next((c for c in room.hands.get(tpid,[]) if c["id"] == their_cid), None)
                         if mc and tc:
                             room.hands[pid]  = [tc if c["id"]==my_cid   else c for c in room.hands[pid]]
                             room.hands[tpid] = [mc if c["id"]==their_cid else c for c in room.hands[tpid]]
-                            await broadcast(room,{"type":"chat",
-                                "msg":f"✨ L'Absolu : {username} échange une carte avec {room.players[tpid]['username']}."})
+                            await broadcast(room,{"type":"chat","msg":f"✨ L'Absolu : {username} échange une carte avec {room.players[tpid]['username']}."})
                     room.pending_interaction = None; room.state = "playing"
                     await send_state(room)
                     if room.dev_mode: asyncio.create_task(run_bots(room))
 
-            # ── CONTINUE TRICK (host skips 5s timer) ──────────────────
             elif act == "continue_trick" and pid == room.host_id:
                 if room.state == "trick_review":
                     await _finalize_trick(room)
 
-            # ── NEW ROUND ────────────────────────────────────────────
             elif act == "new_round" and pid == room.host_id:
                 if room.state != "roundend": continue
                 deck = build_deck()
@@ -968,11 +1017,11 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 leader = max(absolu_dealt.items(), key=lambda x: x[1]["value"])[0]
                 room.trick_leader = leader; room.trick_order = _rotate(room.player_order, leader)
                 room.current_trick = {}; room.loi_constraint = None; room.state = "playing"
+                room.discard_pile = []; room.last_trick = None
                 await send_state(room)
                 await broadcast(room,{"type":"chat","msg":f"🔮 Manche {room.round_num} ! {room.players[leader]['username']} ouvre."})
                 if room.dev_mode: asyncio.create_task(run_bots(room))
 
-            # ── RESTART ──────────────────────────────────────────────
             elif act == "restart" and pid == room.host_id:
                 if room.state != "gameover": continue
                 dev = room.dev_mode
@@ -990,7 +1039,6 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 await send_state(room)
                 await broadcast(room,{"type":"chat","msg":"🔄 Nouvelle partie !"})
 
-            # ── CHAT ─────────────────────────────────────────────────
             elif act == "chat":
                 text = str(raw.get("text","")).strip()[:200]
                 if text:
