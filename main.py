@@ -101,8 +101,8 @@ DECK_DEFINITION = [
     {"id":"r19", "value":19, "color":"rouge", "name":"L'Automne",    "effect_type":"if_lone_color", "effect_param":None,    "is_absolu":False},
     {"id":"r20", "value":20, "color":"rouge", "name":"L'Harmonie",   "effect_type":"lowest_all",    "effect_param":None,    "is_absolu":False},
     {"id":"r21", "value":21, "color":"rouge", "name":"Le Rêve",      "effect_type":"reve",          "effect_param":None,    "is_absolu":False},
-    {"id":"r22", "value":22, "color":"rouge", "name":"L'Orgueil",    "effect_type":"orgueil",       "effect_param":None,    "is_absolu":False},
-    {"id":"r23", "value":23, "color":"rouge", "name":"La Jalousie",  "effect_type":"jalousie",      "effect_param":None,    "is_absolu":False},
+    {"id":"r22", "value":22, "color":"rouge", "name":"La Jalousie",  "effect_type":"jalousie",      "effect_param":None,    "is_absolu":False},
+    {"id":"r23", "value":23, "color":"rouge", "name":"L'Orgueil",    "effect_type":"orgueil",       "effect_param":None,    "is_absolu":False},
     {"id":"r24", "value":24, "color":"rouge", "name":"Le Secret",    "effect_type":"secret",        "effect_param":None,    "is_absolu":False},
     {"id":"r25", "value":25, "color":"rouge", "name":"La Nuit",      "effect_type":"lowest_own",    "effect_param":None,    "is_absolu":False},
     {"id":"b26", "value":26, "color":"bleu",  "name":"La Tristesse", "effect_type":"ignore_highest","effect_param":None,    "is_absolu":False},
@@ -129,28 +129,64 @@ def effective_colors(card):
         return {"vert", "jaune", "rouge", "bleu"}
     return {card["color"]}
 
-def deal_cards(deck, players, n):
-    absolus  = [c for c in deck if c["is_absolu"]]
-    regulars = [c for c in deck if not c["is_absolu"]]
-    # Garantir que le deck ne contient pas de doublons
-    seen_ids = set()
-    absolus  = [c for c in absolus  if c["id"] not in seen_ids and not seen_ids.add(c["id"])]
-    regulars = [c for c in regulars if c["id"] not in seen_ids and not seen_ids.add(c["id"])]
-    random.shuffle(absolus)
-    random.shuffle(regulars)
+def _hand_sizes(players, teams, n):
+    """Taille de main cible par joueur selon regles.md §MISE EN PLACE :
+       4 j. → 5 / 5 j. → 5 pour l'équipe de 3, 4 pour l'équipe de 2 / 6 j. → 4."""
+    if n == 4:
+        return {p: 5 for p in players}
+    if n == 6:
+        return {p: 4 for p in players}
+    # 5 joueurs : la règle dépend de la taille de l'équipe
+    sizes = {}
+    for t in teams:
+        s = 5 if len(t) == 3 else 4
+        for p in t:
+            sizes[p] = s
+    return sizes
+
+def deal_cards(deck, players, n, existing_teams=None, active_absolu_ids=None):
+    """Distribue une main conformément à regles.md.
+
+    - Manche 1 (existing_teams=None) : n Absolus sont tirés au sort et distribués
+      face visible (un par joueur). Les 6-n Absolus restants sont écartés
+      pour toute la partie. Les équipes sont formées à partir des Absolus tirés.
+    - Manche 2+ (existing_teams fournies) : les n Absolus « actifs » (active_absolu_ids)
+      sont remélangés avec les regulars ; les équipes restent identiques.
+      Les joueurs peuvent recevoir 0 ou plusieurs Absolus en main (face cachée).
+
+    Retourne (hands, absolu_dealt, teams, active_absolu_ids).
+    `absolu_dealt` est vide en manche 2+ (les Absolus ne sont plus face visible)."""
+    if n not in (4, 5, 6):
+        raise ValueError(f"Nombre de joueurs invalide : {n}")
+    all_absolus = [c for c in deck if c["is_absolu"]]
+    regulars    = [c for c in deck if not c["is_absolu"]]
     hands = {p: [] for p in players}
     absolu_dealt = {}
-    for i, pid in enumerate(players):
-        hands[pid].append(absolus[i])
-        absolu_dealt[pid] = absolus[i]
-    remaining = absolus[n:] + regulars
-    random.shuffle(remaining)
+
+    if existing_teams is None:
+        # Manche 1 : piocher n Absolus, en donner un à chacun, former les équipes.
+        random.shuffle(all_absolus)
+        used_absolus = all_absolus[:n]
+        for i, pid in enumerate(players):
+            hands[pid].append(used_absolus[i])
+            absolu_dealt[pid] = used_absolus[i]
+        teams = form_teams(players, [absolu_dealt[p] for p in players])
+        pool = regulars[:]
+    else:
+        # Manche 2+ : tous les Absolus actifs + regulars remélangés ensemble.
+        active_ids = set(active_absolu_ids or [])
+        used_absolus = [c for c in all_absolus if c["id"] in active_ids]
+        teams = existing_teams
+        pool = used_absolus + regulars
+
+    random.shuffle(pool)
+    target = _hand_sizes(players, teams, n)
     idx = 0
     for pid in players:
-        while len(hands[pid]) < 5 and idx < len(remaining):
-            hands[pid].append(remaining[idx])
+        while len(hands[pid]) < target[pid] and idx < len(pool):
+            hands[pid].append(pool[idx])
             idx += 1
-    return hands, absolu_dealt
+    return hands, absolu_dealt, teams, [a["id"] for a in used_absolus]
 
 def form_teams(players, absolu_cards):
     n = len(players)
@@ -171,9 +207,13 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
     for c in cards:
         all_colors_in_play |= effective_colors(c)
     ignore_highest = any(c["effect_type"] == "ignore_highest" for c in cards)
+    lowest_wins    = any(c["effect_type"] == "lowest_wins" for c in cards)
+    # Le Miroir annule l'effet de La Tristesse (regles.md §Miroir)
+    if lowest_wins and ignore_highest:
+        ignore_highest = False
+        msgs.append("🪞 Le Miroir annule l'effet de La Tristesse.")
     if ignore_highest:
         msgs.append("🌧️ La Tristesse : la carte de plus forte valeur est ignorée.")
-    lowest_wins = any(c["effect_type"] == "lowest_wins" for c in cards)
     if lowest_wins:
         msgs.append("🪞 Le Miroir : la carte de plus FAIBLE valeur remporte le tour !")
 
@@ -244,15 +284,20 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
     chain_discards = {}
     for pid, card in played.items():
         if card["effect_type"] == "chain" and card["id"] in to_discard:
-            spare = [c for c in hands.get(pid, []) if c["id"] != card["id"]]
+            # Si la carte a été déplacée par Le Rêve, le propriétaire diffère du slot
+            owner = card.get("_owner", pid)
+            # La Chance ne peut pas défausser La Peur (regles.md §La Chance)
+            spare = [c for c in hands.get(owner, [])
+                     if c["id"] != card["id"] and c["effect_type"] != "unbreakable"]
             if spare:
                 extra = min(spare, key=lambda c: c["value"])
-                chain_discards[pid] = extra
+                chain_discards[owner] = extra
                 msgs.append(f"⛓️ La Chance : défausse aussi {extra['name']}.")
 
     next_leader = winner_pid
     for pid, card in played.items():
         if card["effect_type"] == "orgueil":
+            # « à votre gauche » = à gauche du joueur qui a POSÉ la carte d'Orgueil
             next_leader = orgueil_pid_override or winner_pid
             msgs.append("👑 L'Orgueil : le joueur à gauche commencera.")
             break
@@ -266,21 +311,26 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
     }
 
 def check_win_condition(hands, teams):
-    one = [(pid, h) for pid, h in hands.items() if len(h) == 1]
-    if not one:
+    """Détermine si une équipe remporte la manche (regles.md §FIN DE LA MANCHE).
+    Retourne (team_idx, winner_pid) ou None.
+    Priorité : un joueur à 0 carte (grâce à La Chance) > 1 carte (+ plus forte valeur)."""
+    zero = [pid for pid, h in hands.items() if len(h) == 0]
+    one  = [(pid, h) for pid, h in hands.items() if len(h) == 1]
+    if not zero and not one:
         return None
-    winning = set()
-    for pid, _ in one:
-        for ti, t in enumerate(teams):
-            if pid in t:
-                winning.add(ti)
-    if len(winning) == 1:
-        return list(winning)[0]
-    best = max(one, key=lambda x: x[1][0]["value"])[0]
-    for ti, t in enumerate(teams):
-        if best in t:
-            return ti
-    return None
+
+    def team_of(pid):
+        return next((i for i, t in enumerate(teams) if pid in t), -1)
+
+    # 0 carte (La Chance) bat toujours 1 carte
+    if zero:
+        # S'il y en a plusieurs, on prend arbitrairement le premier pour ouvrir le round
+        winner_pid = zero[0]
+        return (team_of(winner_pid), winner_pid)
+
+    # Départage entre joueurs à 1 carte : plus forte valeur en main
+    best_pid, _ = max(one, key=lambda x: x[1][0]["value"])
+    return (team_of(best_pid), best_pid)
 
 # ─────────────────────────────────────────────────────────────────
 # GAME ROOM
@@ -310,6 +360,8 @@ class GameRoom:
         self._review_task        = None
         self.last_trick          = None
         self.discard_pile        = []
+        self.active_absolu_ids   = []    # Absolus réellement utilisés dans la partie
+        self.manche_winner_pid   = None  # joueur ouvrant la manche suivante
 
     def add_player(self, pid, username):
         self.players[pid] = {"username": username, "ws": None}
@@ -420,7 +472,8 @@ async def _resolve_and_advance(room: GameRoom):
     orgueil_override = None
     for pid, card in room.current_trick.items():
         if card["effect_type"] == "orgueil":
-            orgueil_override = _left_of(room.player_order, pid)
+            owner = card.get("_owner", pid)
+            orgueil_override = _left_of(room.player_order, owner)
             break
 
     result = resolve_trick(room.current_trick, room.hands, orgueil_override)
@@ -431,7 +484,9 @@ async def _resolve_and_advance(room: GameRoom):
     for p in room.player_order:
         played_c = room.current_trick.get(p)
         if played_c and played_c["id"] in discarded_ids:
-            room.hands[p] = [c for c in room.hands[p] if c["id"] != played_c["id"]]
+            # _owner ≠ slot pour Le Rêve : la carte retourne à la main de celui qui l'a jouée
+            owner = played_c.get("_owner", p)
+            room.hands[owner] = [c for c in room.hands[owner] if c["id"] != played_c["id"]]
     for p, extra in result["chain_discards"].items():
         room.hands[p] = [c for c in room.hands[p] if c["id"] != extra["id"]]
 
@@ -480,12 +535,15 @@ async def _finalize_trick(room: GameRoom):
     t = getattr(room, "_review_task", None)
     if t and not t.done(): t.cancel()
     result = room.trick_review_result
-    wt = check_win_condition(room.hands, room.teams)
-    if wt is not None:
+    win = check_win_condition(room.hands, room.teams)
+    if win is not None:
+        wt, winner_pid = win
         room.team_wins[wt] += 1
+        room.manche_winner_pid = winner_pid  # ouvrira la manche suivante
         members = [room.players[p]["username"] for p in room.teams[wt] if p in room.players]
+        winner_name = room.players[winner_pid]["username"] if winner_pid in room.players else "?"
         await broadcast(room, {"type": "chat",
-            "msg": f"🏆 L'équipe {', '.join(members)} remporte la manche ! ({room.team_wins[wt]}/2)"})
+            "msg": f"🏆 L'équipe {', '.join(members)} remporte la manche grâce à {winner_name} ! ({room.team_wins[wt]}/2)"})
         if room.team_wins[wt] >= 2:
             room.state = "gameover"
             save_history(room, wt)
@@ -550,6 +608,7 @@ async def run_bots(room: GameRoom):
         if room.state != "playing": break
 
 async def _play_card_logic(room: GameRoom, pid: str, card: dict):
+    card["_owner"] = pid  # utilisé par Le Rêve pour retrouver la main d'origine
     room.current_trick[pid] = card
     uname = room.players[pid]["username"]
     await broadcast(room, {"type": "chat", "msg": f"🃏 {uname} joue {card['name']}."})
@@ -862,10 +921,13 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 if n < 4 or n > 6:
                     await websocket.send_json({"type":"error","msg":f"Il faut 4–6 joueurs ({n} actuellement)"}); continue
                 deck = build_deck()
-                hands, absolu_dealt = deal_cards(deck, room.player_order, n)
+                hands, absolu_dealt, teams, active_ids = deal_cards(deck, room.player_order, n)
                 room.hands = hands; room.absolu_dealt = absolu_dealt; room.round_num = 1
-                room.teams     = form_teams(room.player_order, [absolu_dealt[p] for p in room.player_order])
+                room.teams     = teams
                 room.team_wins = [0] * len(room.teams)
+                room.active_absolu_ids = active_ids
+                room.manche_winner_pid = None
+                # Manche 1 : plus fort Absolu ouvre (regles.md §DÉROULEMENT)
                 leader = max(absolu_dealt.items(), key=lambda x: x[1]["value"])[0]
                 room.trick_leader = leader
                 room.trick_order  = _rotate(room.player_order, leader)
@@ -955,7 +1017,11 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     tcard_id = raw.get("target_card_id")
                     tpid = next((p for p, c in room.current_trick.items() if c["id"] == tcard_id and p != pid), None)
                     if tpid:
-                        room.current_trick.pop(tpid, None)
+                        returned = room.current_trick.pop(tpid, None)
+                        # Si La Loi est renvoyée en main, sa contrainte tombe (regles.md §La Colère)
+                        if returned and returned["effect_type"] == "loi" and room.loi_constraint:
+                            room.loi_constraint = None
+                            await broadcast(room,{"type":"chat","msg":"⚖️ La Loi est renvoyée en main : la contrainte est levée."})
                         await broadcast(room,{"type":"chat","msg":f"😡 La Colère : {room.players[tpid]['username']} doit rejouer !"})
                     room.pending_interaction = None; room.state = "playing"
                     await send_state(room)
@@ -971,6 +1037,10 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         room.hands[pid]  = [tc if c["id"] == my_cid else c for c in room.hands[pid]]
                         room.hands[tpid] = [my_card if c["id"] == tc["id"] else c for c in room.hands[tpid]]
                         await broadcast(room,{"type":"chat","msg":f"🗡️ La Trahison : {username} substitue une carte à {room.players[tpid]['username']}."})
+                        # Si La Loi revient en main, sa contrainte tombe (regles.md §La Trahison)
+                        if tc["effect_type"] == "loi" and room.loi_constraint:
+                            room.loi_constraint = None
+                            await broadcast(room,{"type":"chat","msg":"⚖️ La Loi est renvoyée en main : la contrainte est levée."})
                     room.pending_interaction = None; room.state = "playing"
                     if len(room.current_trick) == len(room.players):
                         await _resolve_and_advance(room)
@@ -980,10 +1050,117 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         if room.dev_mode: asyncio.create_task(run_bots(room))
 
                 elif itype == "reve":
-                    tpid = raw.get("target_pid"); my_card = room.current_trick.get(pid)
-                    if tpid and tpid in room.players and my_card and tpid not in room.current_trick:
-                        room.current_trick[tpid] = my_card
-                        await broadcast(room,{"type":"chat","msg":f"💭 Le Rêve : {username} pose sa carte devant {room.players[tpid]['username']}."})
+                    tpid = raw.get("target_pid")
+                    my_card = room.current_trick.get(pid)
+                    if not my_card:
+                        room.pending_interaction = None; room.state = "playing"
+                        await send_state(room); continue
+
+                    # Cible = soi-même, invalide ou déjà joué → sans effet (regles.md §Le Rêve)
+                    if tpid == pid or tpid not in room.players or tpid in room.current_trick:
+                        await broadcast(room,{"type":"chat","msg":f"💭 Le Rêve : joué sans cible valide, sans effet."})
+                        room.pending_interaction = None; room.state = "playing"
+                        if len(room.current_trick) == len(room.players):
+                            await _resolve_and_advance(room)
+                            if room.state=="playing" and room.dev_mode: asyncio.create_task(run_bots(room))
+                        else:
+                            await send_state(room)
+                            if room.dev_mode: asyncio.create_task(run_bots(room))
+                        continue
+
+                    # Déplacer Le Rêve : slot actif → slot cible (owner reste l'actif)
+                    room.current_trick[tpid] = my_card
+                    room.current_trick.pop(pid, None)
+                    await broadcast(room,{"type":"chat",
+                        "msg":f"💭 Le Rêve : {username} pose sa carte devant {room.players[tpid]['username']}, qui doit poser une carte."})
+
+                    # Cible = bot : auto-play immédiat
+                    if tpid.startswith("bot_"):
+                        await asyncio.sleep(0.6)
+                        bot_hand = room.hands.get(tpid, [])
+                        if bot_hand:
+                            bot_card = bot_choose_card(bot_hand, room.current_trick, room.loi_constraint)
+                            bot_card["_owner"] = tpid
+                            room.current_trick[pid] = bot_card
+                            await broadcast(room,{"type":"chat",
+                                "msg":f"🃏 {room.players[tpid]['username']} pose {bot_card['name']} devant {username}."})
+                            # Effet immédiat de Loi : s'applique ; autres effets interactifs : ignorés par le bot
+                            if bot_card["effect_type"] == "loi":
+                                room.loi_constraint = {"direction": "lower", "threshold": 15}
+                                await broadcast(room,{"type":"chat",
+                                    "msg":"⚖️ La Loi : les joueurs suivants doivent jouer une carte < 15 (si possible)."})
+                        room.pending_interaction = None; room.state = "playing"
+                        if len(room.current_trick) == len(room.players):
+                            await _resolve_and_advance(room)
+                            if room.state=="playing" and room.dev_mode: asyncio.create_task(run_bots(room))
+                        else:
+                            await send_state(room)
+                            if room.dev_mode: asyncio.create_task(run_bots(room))
+                        continue
+
+                    # Cible humaine : demander une carte en réponse
+                    room.pending_interaction = {
+                        "type": "reve_response",
+                        "responder_pid": tpid,
+                        "back_to_pid":   pid,
+                    }
+                    room.state = "interactive"
+                    await send_state(room)
+                    await send_to(room, tpid, {
+                        "type": "interaction_required", "interaction": "reve_response",
+                        "message": f"Le Rêve : posez une carte de votre main devant {username}.",
+                        "hand": room.hands.get(tpid, []),
+                        "back_to_username": username,
+                    })
+
+                elif itype == "reve_response":
+                    responder_pid = pi.get("responder_pid")
+                    if pid != responder_pid: continue
+                    back_to = pi["back_to_pid"]
+                    cid = raw.get("card_id")
+                    card = next((c for c in room.hands.get(pid, []) if c["id"] == cid), None)
+                    if not card:
+                        await websocket.send_json({"type":"error","msg":"Carte introuvable."}); continue
+
+                    # Contrainte de La Loi s'applique aussi à la réponse (regles.md §La Loi)
+                    if room.loi_constraint:
+                        d   = room.loi_constraint["direction"]
+                        can = any((d=="lower" and c["value"]<15) or (d=="higher" and c["value"]>15)
+                                  for c in room.hands.get(pid, []))
+                        ok  = (d=="lower" and card["value"]<15) or (d=="higher" and card["value"]>15)
+                        if can and not ok:
+                            suf = "< 15" if d=="lower" else "> 15"
+                            await websocket.send_json({"type":"error","msg":f"La Loi : jouez une carte {suf}."}); continue
+
+                    card["_owner"] = pid  # carte venue de la main du responder
+                    room.current_trick[back_to] = card
+                    await broadcast(room,{"type":"chat",
+                        "msg":f"🃏 {username} pose {card['name']} devant {room.players[back_to]['username']}."})
+
+                    eff = card["effect_type"]
+                    # Effet interactif : c'est le responder qui pilote la suite
+                    if eff in INTERACTIVE_EFFECTS:
+                        room.pending_interaction = {"type": eff, "actor_pid": pid, "card_id": card["id"]}
+                        room.state = "interactive"
+                        await send_state(room)
+                        prompts = {
+                            "loi":      "La Loi : choisissez la contrainte (< ou > 15) pour les joueurs suivants.",
+                            "reve":     "Le Rêve : choisissez un joueur devant qui poser votre carte.",
+                            "jalousie": "La Jalousie : choisissez une carte en jeu à échanger avec la vôtre.",
+                            "secret":   "Le Secret : montrer votre main OU voir celle d'un autre ?",
+                            "colere":   "La Colère : choisissez une carte déjà en jeu à renvoyer en main.",
+                            "trahison": "La Trahison : échangez une carte de votre main avec une carte en jeu.",
+                            "absolu":   "L'Absolu : échangez une carte de votre main avec celle d'un joueur.",
+                        }
+                        await send_to(room, pid, {
+                            "type": "interaction_required", "interaction": eff,
+                            "message": prompts.get(eff, "Choisissez une action."),
+                            "played_cards": {p: c for p, c in room.current_trick.items()},
+                            "players": [{"id": p, "username": room.players[p]["username"]}
+                                        for p in room.player_order if p != pid and p in room.players],
+                        })
+                        continue
+
                     room.pending_interaction = None; room.state = "playing"
                     if len(room.current_trick) == len(room.players):
                         await _resolve_and_advance(room)
@@ -1012,9 +1189,15 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
             elif act == "new_round" and pid == room.host_id:
                 if room.state != "roundend": continue
                 deck = build_deck()
-                hands, absolu_dealt = deal_cards(deck, room.player_order, len(room.players))
-                room.hands = hands; room.absolu_dealt = absolu_dealt; room.round_num += 1
-                leader = max(absolu_dealt.items(), key=lambda x: x[1]["value"])[0]
+                # Équipes figées, Absolus actifs idem (regles.md §FIN DE LA MANCHE)
+                hands, _, _, _ = deal_cards(
+                    deck, room.player_order, len(room.players),
+                    existing_teams=room.teams,
+                    active_absolu_ids=room.active_absolu_ids,
+                )
+                room.hands = hands; room.absolu_dealt = {}; room.round_num += 1
+                # Manche 2+ : le gagnant de la manche précédente ouvre
+                leader = room.manche_winner_pid or room.player_order[0]
                 room.trick_leader = leader; room.trick_order = _rotate(room.player_order, leader)
                 room.current_trick = {}; room.loi_constraint = None; room.state = "playing"
                 room.discard_pile = []; room.last_trick = None
@@ -1036,6 +1219,8 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 room.current_trick={}; room.trick_leader=""; room.trick_order=[]
                 room.round_num=0; room.loi_constraint=None; room.pending_interaction=None
                 room.game_id=str(uuid.uuid4()); room.started_at=int(time.time())
+                room.active_absolu_ids=[]; room.manche_winner_pid=None
+                room.absolu_dealt={}; room.discard_pile=[]; room.last_trick=None
                 await send_state(room)
                 await broadcast(room,{"type":"chat","msg":"🔄 Nouvelle partie !"})
 

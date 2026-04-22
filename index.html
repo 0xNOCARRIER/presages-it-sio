@@ -1416,6 +1416,18 @@ function openInteraction(msg) {
       const note=document.createElement('p'); note.style='font-size:.78rem;color:var(--text-dim);margin-top:.3rem;';
       note.textContent='Sélectionnez un joueur. Les cartes seront échangées automatiquement.'; choices.appendChild(note);
     }
+  } else if (msg.interaction === 'reve_response') {
+    // La cible d'un Le Rêve choisit une carte de sa main à jouer devant l'auteur du Rêve
+    (msg.hand || []).forEach(card => {
+      const el = document.createElement('div'); el.className = 'card-choice'; el.dataset.cardId = card.id;
+      el.innerHTML = cardHTML(card) + `<span class="cname">${esc(card.name)}</span>`;
+      el.onclick = () => {
+        choices.querySelectorAll('.card-choice').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        _intState.selected.card_id = card.id;
+      };
+      choices.appendChild(el);
+    });
   } else if (['jalousie','trahison','colere'].includes(msg.interaction)) {
     const pEntries=Object.entries(played).filter(([ppid])=>ppid!==S.me?.id);
     pEntries.forEach(([ppid,card])=>{
@@ -1454,7 +1466,8 @@ function renderPlayerPicker(players, container, key) {
 
 function interactionTitle(t) {
   return {loi:'⚖️ La Loi',reve:'💭 Le Rêve',jalousie:'🔀 La Jalousie',
-          secret:'🤫 Le Secret',colere:'😡 La Colère',trahison:'🗡️ La Trahison',absolu:'✨ L\'Absolu'}[t]||'Action';
+          secret:'🤫 Le Secret',colere:'😡 La Colère',trahison:'🗡️ La Trahison',
+          absolu:'✨ L\'Absolu', reve_response:'💭 Le Rêve : à vous de jouer'}[t]||'Action';
 }
 
 function confirmInteraction() {
@@ -1464,6 +1477,7 @@ function confirmInteraction() {
   if (['jalousie','colere'].includes(t)&&!sel.target_card_id){showErr('Choisissez une carte.');return;}
   if (t==='trahison'&&(!sel.target_card_id||!sel.hand_card_id)){showErr('Choisissez une carte en jeu et une de votre main.');return;}
   if (t==='secret'&&(!sel.choice||!sel.target_pid)){showErr('Choisissez une action et un joueur.');return;}
+  if (t==='reve_response'&&!sel.card_id){showErr('Choisissez une carte de votre main.');return;}
   if (t==='absolu') {
     const me=gs?.players?.find(p=>p.id===S.me?.id);
     const target=gs?.players?.find(p=>p.id===sel.target_pid);
