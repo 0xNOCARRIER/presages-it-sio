@@ -14,7 +14,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -362,6 +362,9 @@ class GameRoom:
         self.discard_pile        = []
         self.active_absolu_ids   = []    # Absolus réellement utilisés dans la partie
         self.manche_winner_pid   = None  # joueur ouvrant la manche suivante
+        self.turn_timer_seconds  = 10   # secondes par tour joueur humain
+        self._turn_timer_task    = None  # asyncio Task de minuterie
+        self.last_activity_at    = time.time()  # pour le monitor d'inactivité
 
     def add_player(self, pid, username):
         self.players[pid] = {"username": username, "ws": None}
@@ -408,6 +411,7 @@ class GameRoom:
             "trick_review": self.trick_review_result,
             "last_trick": self.last_trick,
             "discard_pile": self.discard_pile[-20:],
+            "turn_timer_seconds": self.turn_timer_seconds,
         }
 
 rooms: dict = {}
@@ -465,10 +469,73 @@ def _left_of(order, pid):
     return order[(order.index(pid) + 1) % len(order)]
 
 # ─────────────────────────────────────────────────────────────────
+# TURN TIMER
+# ─────────────────────────────────────────────────────────────────
+
+def _cancel_turn_timer(room: GameRoom):
+    t = room._turn_timer_task
+    if t and not t.done():
+        t.cancel()
+    room._turn_timer_task = None
+
+async def _start_turn_timer(room: GameRoom):
+    _cancel_turn_timer(room)
+    if room.turn_timer_seconds <= 0 or room.state != "playing":
+        return
+    nxt = room._next_to_play()
+    if not nxt or nxt.startswith("bot_"):
+        return
+    pid_for_timer = nxt
+
+    async def _expire():
+        try:
+            await asyncio.sleep(room.turn_timer_seconds)
+        except asyncio.CancelledError:
+            return
+        if room.state != "playing" or room._next_to_play() != pid_for_timer:
+            return
+        hand = room.hands.get(pid_for_timer, [])
+        if not hand:
+            return
+        valid = hand[:]
+        if room.loi_constraint:
+            d = room.loi_constraint["direction"]
+            filtered = [c for c in hand if (d == "lower" and c["value"] < 15)
+                        or (d == "higher" and c["value"] > 15)]
+            if filtered:
+                valid = filtered
+        card = random.choice(valid)
+        uname = room.players[pid_for_timer]["username"]
+        await broadcast(room, {"type": "chat",
+            "msg": f"⏰ {uname} joue automatiquement {card['name']} (temps écoulé)."})
+        await _play_card_logic(room, pid_for_timer, card)
+
+    room._turn_timer_task = asyncio.create_task(_expire())
+    await broadcast(room, {"type": "turn_timer", "pid": nxt, "seconds": room.turn_timer_seconds})
+
+# ─────────────────────────────────────────────────────────────────
+# INACTIVITY MONITOR
+# ─────────────────────────────────────────────────────────────────
+
+async def _inactivity_monitor():
+    while True:
+        await asyncio.sleep(10)
+        now = time.time()
+        to_close = [rid for rid, r in list(rooms.items())
+                    if r.state != "lobby" and now - r.last_activity_at > 30]
+        for rid in to_close:
+            room = rooms.pop(rid, None)
+            if room:
+                _cancel_turn_timer(room)
+                await broadcast(room, {"type": "error",
+                    "msg": "⏳ Partie fermée pour inactivité (30 secondes sans action)."})
+
+# ─────────────────────────────────────────────────────────────────
 # TRICK RESOLUTION
 # ─────────────────────────────────────────────────────────────────
 
 async def _resolve_and_advance(room: GameRoom):
+    _cancel_turn_timer(room)
     orgueil_override = None
     for pid, card in room.current_trick.items():
         if card["effect_type"] == "orgueil":
@@ -560,6 +627,7 @@ async def _finalize_trick(room: GameRoom):
     room.trick_review_result = None
     room.state = "playing"
     await send_state(room)
+    await _start_turn_timer(room)
     if room.dev_mode:
         asyncio.create_task(run_bots(room))
 
@@ -660,6 +728,7 @@ async def _play_card_logic(room: GameRoom, pid: str, card: dict):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    asyncio.create_task(_inactivity_monitor())
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -682,6 +751,9 @@ def require_admin(pid: str = Depends(get_current_user)):
 class AuthBody(BaseModel):
     username: str
     password: str
+
+class CreateRoomBody(BaseModel):
+    timer_seconds: int = 10
 
 class AdminResetPwBody(BaseModel):
     new_password: str
@@ -751,9 +823,12 @@ def history(pid: str = Depends(get_current_user)):
 # ── Rooms ─────────────────────────────────────────────────────────
 
 @app.post("/api/rooms")
-def create_room(pid: str = Depends(get_current_user)):
+def create_room(body: CreateRoomBody, pid: str = Depends(get_current_user)):
     rid = str(uuid.uuid4())[:6].upper()
-    rooms[rid] = GameRoom(rid, pid); return {"room_id": rid}
+    room = GameRoom(rid, pid)
+    room.turn_timer_seconds = body.timer_seconds if body.timer_seconds in (10, 15, 20) else 10
+    rooms[rid] = room
+    return {"room_id": rid}
 
 @app.post("/api/rooms/dev")
 def create_dev_room(pid: str = Depends(get_current_user)):
@@ -919,6 +994,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
     try:
         while True:
             raw = await websocket.receive_json()
+            room.last_activity_at = time.time()
             act = raw.get("action")
 
             if act == "start" and pid == room.host_id:
@@ -943,6 +1019,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 await broadcast(room, {"type":"chat",
                     "msg": f"🔮 La partie commence{tag} ! {room.players[leader]['username']} ouvre."})
                 if room.dev_mode: asyncio.create_task(run_bots(room))
+                await _start_turn_timer(room)
 
             elif act == "play_card":
                 if room.state != "playing":
@@ -961,6 +1038,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     if can and not ok:
                         suf = "< 15" if d=="lower" else "> 15"
                         await websocket.send_json({"type":"error","msg":f"La Loi : jouez une carte {suf}."}); continue
+                _cancel_turn_timer(room)
                 await _play_card_logic(room, pid, card)
 
             elif act == "interaction_response":
@@ -977,6 +1055,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     await broadcast(room, {"type":"chat","msg": f"⚖️ La Loi : les joueurs suivants jouent {suf} si possible."})
                     await send_state(room)
                     if room.dev_mode: asyncio.create_task(run_bots(room))
+                    await _start_turn_timer(room)
 
                 elif itype == "jalousie":
                     tcard_id = raw.get("target_card_id")
@@ -996,6 +1075,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     else:
                         await send_state(room)
                         if room.dev_mode: asyncio.create_task(run_bots(room))
+                        await _start_turn_timer(room)
 
                 elif itype == "secret":
                     choice = raw.get("choice", "show_to"); tpid = raw.get("target_pid")
@@ -1017,6 +1097,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     else:
                         await send_state(room)
                         if room.dev_mode: asyncio.create_task(run_bots(room))
+                        await _start_turn_timer(room)
 
                 elif itype == "colere":
                     tcard_id = raw.get("target_card_id")
@@ -1031,6 +1112,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     room.pending_interaction = None; room.state = "playing"
                     await send_state(room)
                     if room.dev_mode: asyncio.create_task(run_bots(room))
+                    await _start_turn_timer(room)
 
                 elif itype == "trahison":
                     my_cid  = raw.get("hand_card_id"); tcard_id = raw.get("target_card_id")
@@ -1053,6 +1135,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     else:
                         await send_state(room)
                         if room.dev_mode: asyncio.create_task(run_bots(room))
+                        await _start_turn_timer(room)
 
                 elif itype == "reve":
                     tpid = raw.get("target_pid")
@@ -1071,6 +1154,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         else:
                             await send_state(room)
                             if room.dev_mode: asyncio.create_task(run_bots(room))
+                            await _start_turn_timer(room)
                         continue
 
                     # Déplacer Le Rêve : slot actif → slot cible (owner reste l'actif)
@@ -1101,6 +1185,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         else:
                             await send_state(room)
                             if room.dev_mode: asyncio.create_task(run_bots(room))
+                            await _start_turn_timer(room)
                         continue
 
                     # Cible humaine : demander une carte en réponse
@@ -1173,6 +1258,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     else:
                         await send_state(room)
                         if room.dev_mode: asyncio.create_task(run_bots(room))
+                        await _start_turn_timer(room)
 
                 elif itype == "absolu":
                     tpid = raw.get("target_pid"); my_cid = raw.get("my_card_id"); their_cid = raw.get("their_card_id")
@@ -1186,6 +1272,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     room.pending_interaction = None; room.state = "playing"
                     await send_state(room)
                     if room.dev_mode: asyncio.create_task(run_bots(room))
+                    await _start_turn_timer(room)
 
             elif act == "continue_trick" and pid == room.host_id:
                 if room.state == "trick_review":
@@ -1209,9 +1296,11 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 await send_state(room)
                 await broadcast(room,{"type":"chat","msg":f"🔮 Manche {room.round_num} ! {room.players[leader]['username']} ouvre."})
                 if room.dev_mode: asyncio.create_task(run_bots(room))
+                await _start_turn_timer(room)
 
             elif act == "restart" and pid == room.host_id:
                 if room.state != "gameover": continue
+                _cancel_turn_timer(room)
                 dev = room.dev_mode
                 room.players      = {k:v for k,v in room.players.items() if not k.startswith("bot_")}
                 room.player_order = [p for p in room.player_order if not p.startswith("bot_")]
