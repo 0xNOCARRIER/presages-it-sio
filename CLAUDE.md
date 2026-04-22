@@ -113,16 +113,14 @@ Implémentation web du jeu de société **Présages** (jeu de cartes français) 
 ### Interface
 - **Échelle globale ×1.5** : root font-size à 24px (au lieu de 16px), tous les rem sont agrandis proportionnellement.
 - Cartes **165×240px** (pip 18px, padding 9px).
-- Panels agrandis : auth 570px, home 600px, teams 270px, chat 345px, colonne droite lobby 450px, overlays (trick-review 840, interaction 720, secret 810, roundend 570).
+- Panels agrandis : auth 570px, home 600px, teams 270px, chat 345px, colonne droite lobby 450px.
 - Indicateur de tour animé (pulse quand c'est à toi) — **taille 2.4rem en pulse** ("✦ À vous de jouer !" rendu bien visible), 1.2rem sinon.
 - Bannière animée au gagnant du pli + cartes gagnantes qui brillent, perdantes qui s'estompent
-- **État `trick_review`** : overlay de 5 secondes après le dernier coup du pli, montrant :
-  - Le gagnant
-  - Les cartes jouées avec leur statut (★ Gagnante / ✕ Défaussée / ↩ Reprise)
-  - Les messages d'effets (qui a été défaussé et pourquoi)
-  - Barre de progression décompte 5s
-  - **Bouton "Continuer ▶" visible uniquement pour l'hôte** pour passer avant la fin du compte à rebours
-- Overlay de sélection pour les effets interactifs (cible, carte, choix faible/fort)
+- **Pas de popups/overlays pendant le jeu** — tout se passe sur le plateau :
+  - **`trick_review`** : bande `#trick-banner` sous le plateau, badges ★/✕/↩ sur les cartes, bouton "Continuer ▶" (hôte uniquement)
+  - **Effets interactifs** : barre `#action-bar` au-dessus de la main ; les éléments du plateau (.int-target) s'illuminent et sont cliquables (ombres joueurs, cartes jouées, main)
+  - **Le Secret (main révélée)** : affiché dans le chat (onglet Messages)
+  - **Fin de manche** : `#roundend-panel` centré sur le plateau (position:absolute dans #table-panel), non plein-écran
 
 ### Code admin (dev)
 - Un **code admin unique** est généré au premier démarrage et stocké dans la table `app_config` (clé `admin_join_code`).
@@ -144,7 +142,7 @@ Implémentation web du jeu de société **Présages** (jeu de cartes français) 
 
 - `_play_card_logic` gère à la fois les joueurs humains et les bots.
 - Le backend expose un état `public_state` complet avec l'état de pli + review time.
-- Action WebSocket `continue_trick` (réservée à l'hôte) pour skip les 5s de review.
+- Action WebSocket `continue_trick` (réservée à l'hôte) pour valider la review et passer au pli suivant.
 - Nginx **DOIT** avoir `proxy_read_timeout 86400` sinon les WebSockets se coupent après quelques minutes.
 - La DB SQLite est créée au démarrage si absente (pas de migration séparée).
 
@@ -154,7 +152,7 @@ Implémentation web du jeu de société **Présages** (jeu de cartes français) 
 2. **Main de 7 cartes au lieu de 5** → corrigé.
 3. **Absolus mal colorés** → maintenant BLEU, ce qui impacte Hiver/Amitié/etc.
 4. **Cartes illisibles** → taille portée à 110×160 avec polices plus grandes.
-5. **Tour trop rapide / pas de feedback** → ajout de l'état `trick_review` (5s + bouton hôte).
+5. **Tour trop rapide / pas de feedback** → ajout de l'état `trick_review` avec bouton "Continuer ▶" (hôte uniquement, pas de décompte automatique).
 6. **Bug de La Loi (et autres effets interactifs)** : la condition `not room.dev_mode` dans le backend bloquait à tort l'ouverture de l'overlay d'interaction **même en partie normale**. Corrigé.
 7. **Race condition** entre `send_state` et `send_to` sur `interaction_required` → résolu via le nouvel état `trick_review` et un ordre d'envoi corrigé.
 

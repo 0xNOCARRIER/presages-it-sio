@@ -512,8 +512,7 @@ async def _resolve_and_advance(room: GameRoom):
         "discarded": result["discarded"], "chain_discards": result["chain_discards"],
         "messages": result["messages"], "next_leader": result["next_leader"], "msg": full_msg,
     }
-    # En mode dev auto-continue après 2s, sinon l'hôte clique sur Continuer
-    auto_ms = 2000 if room.dev_mode else 0
+    auto_ms = 0  # L'hôte clique toujours sur Continuer (même en mode dev)
     await broadcast(room, {
         "type": "trick_review", "winner_pid": winner_pid, "winner_name": winner_name,
         "discarded": result["discarded"],
@@ -881,6 +880,12 @@ def admin_close_room(rid: str, _admin: str = Depends(require_admin)):
     if not room: raise HTTPException(404)
     rooms.pop(rid.upper(), None)
     return {"ok": True}
+
+@app.post("/api/admin/rooms/close-all")
+def admin_close_all_rooms(_admin: str = Depends(require_admin)):
+    count = len(rooms)
+    rooms.clear()
+    return {"ok": True, "closed": count}
 
 # ─────────────────────────────────────────────────────────────────
 # WEBSOCKET

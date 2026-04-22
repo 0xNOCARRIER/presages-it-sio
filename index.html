@@ -143,20 +143,21 @@ input:focus { border-color:var(--gold); }
 /* ── GAME LAYOUT ── */
 #game-screen {
   height:100vh; display:grid;
-  grid-template-columns:180px 1fr 230px;
+  grid-template-columns:210px 1fr 230px;
   gap:.65rem; padding:.65rem; overflow:hidden;
 }
-#teams-panel { display:flex; flex-direction:column; gap:.5rem; overflow-y:auto; }
-.team-block  { border:1px solid var(--border); border-radius:var(--r); padding:.7rem; }
-.team-block.winning { border-color:var(--gold-dim); }
-.team-label  { font-family:'Cinzel',serif; font-size:.65rem; letter-spacing:.1em;
-               color:var(--text-dim); text-transform:uppercase; margin-bottom:.3rem; }
-.team-stars  { color:var(--gold); font-size:.9rem; margin-bottom:.35rem; }
-.team-member { font-size:.88rem; padding:.18rem 0; display:flex; align-items:center; gap:.35rem; }
-.team-member .hcount { margin-left:auto; font-size:.72rem; color:var(--text-dim); }
-.you-crown   { color:var(--gold); font-size:.7rem; }
+#teams-panel { display:flex; flex-direction:column; gap:.55rem; overflow-y:auto; }
+.team-block  { border:1px solid var(--border); border-radius:var(--r); padding:.8rem .9rem; }
+.team-block.winning { border-color:var(--gold-dim); background:rgba(200,168,75,.04); }
+.team-label  { font-family:'Cinzel',serif; font-size:.75rem; letter-spacing:.08em;
+               color:var(--gold-dim); text-transform:uppercase; margin-bottom:.35rem; }
+.team-stars  { color:var(--gold); font-size:1.05rem; margin-bottom:.4rem; }
+.team-member { font-size:1rem; padding:.22rem 0; display:flex; align-items:center; gap:.4rem; }
+.team-member .hcount { margin-left:auto; font-size:.8rem; color:var(--text-dim); }
+.you-crown   { color:var(--gold); font-size:.75rem; }
+.quit-game-btn { margin-top:auto; padding-top:.5rem; }
 
-#table-panel { display:flex; flex-direction:column; gap:.5rem; overflow:hidden; }
+#table-panel { display:flex; flex-direction:column; gap:.5rem; overflow:hidden; position:relative; }
 #turn-indicator {
   text-align:center; font-family:'Cinzel',serif; font-size:.88rem;
   color:var(--gold); letter-spacing:.08em; min-height:1.5rem;
@@ -238,87 +239,72 @@ input:focus { border-color:var(--gold); }
 .played-wrapper { display:flex; flex-direction:column; align-items:center; gap:.3rem; }
 .played-by { font-size:.78rem; color:var(--text-dim); font-style:italic; }
 
-/* ── OVERLAYS ── */
+/* ── ANIMATIONS ── */
 @keyframes bannerIn { from { opacity:0; transform:scale(.7); } to { opacity:1; transform:scale(1); } }
 
-#trick-review-overlay {
-  position:fixed; inset:0; z-index:75; background:rgba(0,0,0,.78);
-  display:flex; align-items:center; justify-content:center;
+/* ── TRICK BANNER (résultat du pli, dans le panel équipes) ── */
+.trick-banner {
+  border:1px solid var(--gold-dim); border-radius:var(--r);
+  padding:.6rem .8rem; display:flex; flex-direction:column; gap:.3rem;
+  font-size:.82rem; animation:bannerIn .25s ease; background:#0e0d18;
 }
-#trick-review-box {
-  background:var(--surface); border:1px solid var(--gold-dim); border-radius:var(--r);
-  padding:1.6rem; width:min(560px,94vw); display:flex; flex-direction:column; gap:1rem;
-  animation:bannerIn .3s ease forwards; max-height:90vh; overflow-y:auto;
+.tb-title  { font-family:'Cinzel',serif; color:var(--gold); font-size:.82rem; }
+.tb-effects { color:var(--text-dim); font-size:.75rem; line-height:1.5; }
+.trick-status {
+  font-size:.68rem; font-style:italic; text-align:center; margin-top:.2rem; pointer-events:none;
+  display:block;
 }
-#trick-review-cards  { display:flex; flex-wrap:wrap; gap:.6rem; justify-content:center; }
-.discarded-label { font-size:.72rem; color:#e05050; font-style:italic; margin-top:.2rem; text-align:center; }
-.kept-label      { font-size:.72rem; color:var(--text-dim); font-style:italic; margin-top:.2rem; text-align:center; }
-#trick-review-effects { font-size:.85rem; color:var(--text-dim); line-height:1.6; }
-#trick-review-effects span { display:block; }
-#trick-countdown-bar { height:4px; background:var(--border); border-radius:2px; overflow:hidden; margin-top:.3rem; }
-#trick-countdown-fill { height:100%; background:var(--gold); border-radius:2px; transition:width linear; }
-.card-wrapper-labeled { display:flex; flex-direction:column; align-items:center; gap:.2rem; }
+.trick-status.winner { color:var(--gold); }
+.trick-status.discard { color:#e05050; }
+.trick-status.ret { color:var(--text-dim); }
 
-#interaction-overlay {
-  position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.72);
-  display:flex; align-items:center; justify-content:center;
+/* ── ACTION BAR (interactions, inline au-dessus de la main) ── */
+#action-bar {
+  background:#11101c; border:1px solid var(--gold-dim); border-radius:var(--r);
+  padding:.5rem .9rem; display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
+  flex-shrink:0; animation:bannerIn .2s ease;
 }
-#interaction-box {
-  background:var(--surface); border:1px solid var(--gold-dim); border-radius:var(--r);
-  width:min(520px,96vw); display:flex; flex-direction:column;
-  animation:bannerIn .25s ease forwards;
-  max-height:88vh; overflow:hidden;
-}
-#int-scrollable {
-  flex:1; overflow-y:auto; padding:1.4rem 1.4rem .5rem 1.4rem;
-  display:flex; flex-direction:column; gap:.9rem;
-}
-#int-footer {
-  flex-shrink:0; padding:.75rem 1.4rem 1rem;
-  border-top:1px solid var(--border);
-  background:var(--surface);
-  display:flex; justify-content:flex-end;
-}
-#interaction-box h2 { color:var(--gold); }
-#interaction-box p  { font-size:.9rem; color:var(--text-dim); line-height:1.5; }
-.interaction-choices { display:flex; flex-wrap:wrap; gap:.5rem; }
-.choice-btn {
+#ab-title { font-family:'Cinzel',serif; color:var(--gold); font-size:.82rem; flex-shrink:0; }
+#ab-msg   { color:var(--text-dim); font-size:.8rem; flex:1; min-width:90px; }
+#ab-choices { display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; }
+.ab-btn {
   background:var(--surface); border:1px solid var(--border); color:var(--text);
-  font-family:'Cormorant Garamond',serif; font-size:.88rem;
-  padding:.5rem .9rem; border-radius:var(--r); cursor:pointer;
+  font-family:'Cormorant Garamond',serif; font-size:.85rem;
+  padding:.4rem .8rem; border-radius:var(--r); cursor:pointer;
   transition:border-color .15s, background .15s;
 }
-.choice-btn:hover { border-color:var(--gold); background:#c8a84b12; }
-.choice-btn.selected { border-color:var(--gold); background:#c8a84b22; color:var(--gold); }
-.card-choice {
-  display:flex; flex-direction:column; align-items:center; gap:.3rem; cursor:pointer;
-  padding:.4rem; border:1px solid var(--border); border-radius:var(--r);
-  transition:border-color .15s, background .15s;
-}
-.card-choice:hover { border-color:var(--gold); background:#c8a84b10; }
-.card-choice.selected { border-color:var(--gold); background:#c8a84b20; }
-.card-choice .cname { font-size:.75rem; color:var(--text-dim); font-style:italic; }
+.ab-btn:hover { border-color:var(--gold); background:#c8a84b12; }
+.ab-btn.selected { border-color:var(--gold); background:#c8a84b22; color:var(--gold); }
 
-#secret-overlay {
-  position:fixed; inset:0; z-index:75; background:rgba(0,0,0,.8);
-  display:flex; align-items:center; justify-content:center;
+/* ── CIBLES INTERACTIVES (surbrillance plateau) ── */
+.int-target {
+  cursor:pointer !important;
+  outline:2px solid var(--gold-dim) !important;
+  outline-offset:2px;
+  box-shadow:0 0 14px rgba(200,168,75,.4) !important;
+  pointer-events:auto !important;
+  opacity:1 !important;
+  border-radius:var(--r);
+  transition:outline-color .15s, box-shadow .15s !important;
 }
-#secret-box {
-  background:var(--surface); border:1px solid var(--gold-dim); border-radius:var(--r);
-  padding:1.6rem; width:min(540px,94vw); display:flex; flex-direction:column;
-  gap:1rem; max-height:90vh; overflow-y:auto;
+.int-target:hover {
+  outline-color:var(--gold) !important;
+  box-shadow:0 0 24px rgba(200,168,75,.65) !important;
 }
-#secret-cards { display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; }
+.int-selected {
+  outline:2px solid #5fd38a !important;
+  box-shadow:0 0 14px rgba(95,211,138,.4) !important;
+}
 
-#roundend-overlay {
-  position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.75);
-  display:flex; align-items:center; justify-content:center;
-}
-#roundend-box {
+/* ── FIN DE MANCHE (panel centré sur le plateau, non plein-écran) ── */
+#roundend-panel {
+  position:absolute; left:50%; top:45%; transform:translate(-50%,-50%);
   background:var(--surface); border:1px solid var(--gold-dim); border-radius:var(--r);
-  padding:1.8rem; text-align:center; width:min(380px,90vw);
-  display:flex; flex-direction:column; gap:1rem; animation:bannerIn .3s ease forwards;
+  padding:1.4rem; text-align:center; display:flex; flex-direction:column; gap:.8rem;
+  z-index:20; animation:bannerIn .3s ease forwards; min-width:200px;
 }
+
+/* ── ADMIN MODAL (conservé) ── */
 
 /* ── LEADERBOARD ── */
 #leaderboard-screen {
@@ -457,24 +443,44 @@ input:focus { border-color:var(--gold); }
   background:var(--surface); transition:border-color .25s, background .25s;
   min-width:80px;
 }
-.player-shadow.my-turn-soon { border-color:var(--gold-dim); background:rgba(200,168,75,.06); }
+.player-shadow.my-turn-soon {
+  border-color:var(--gold); background:rgba(200,168,75,.1);
+  animation:shadow-pulse 1.1s ease infinite;
+}
+@keyframes shadow-pulse {
+  0%,100% { box-shadow:0 0 0 rgba(200,168,75,0); }
+  50%     { box-shadow:0 0 10px rgba(200,168,75,.45); }
+}
 .player-shadow.same-team    { background:rgba(200,168,75,.04); }
 .shadow-name {
-  font-size:.62rem; color:var(--text-dim); font-family:'Cinzel',serif;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px; text-align:center;
+  font-size:.75rem; color:var(--text); font-family:'Cinzel',serif;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; text-align:center;
+  display:flex; align-items:center; justify-content:center; gap:.25rem;
 }
-.shadow-cards { display:flex; margin-top:.15rem; }
+.turn-arrow { color:var(--gold); font-size:.65rem; animation:blink-arrow .7s ease infinite; flex-shrink:0; }
+@keyframes blink-arrow { 0%,100%{opacity:1} 50%{opacity:0} }
+.shadow-cards { display:flex; align-items:center; margin-top:.2rem; gap:.25rem; }
 .shadow-card-mini {
-  width:18px; height:27px; border-radius:3px; border:1px solid #252545;
+  width:20px; height:30px; border-radius:3px; border:1px solid #252545;
   background:repeating-linear-gradient(45deg,#14142a,#14142a 2px,#1c1c36 2px,#1c1c36 4px);
-  margin-left:-7px; flex-shrink:0; transition:opacity .2s;
+  margin-left:-8px; flex-shrink:0; transition:opacity .2s;
 }
 .shadow-card-mini:first-child { margin-left:0; }
-.shadow-played {
-  margin-top:.3rem; flex-shrink:0;
+.shadow-count {
+  font-family:'Cinzel',serif; font-size:.78rem; color:var(--gold); flex-shrink:0;
+  background:#1a1820; border:1px solid var(--gold-dim); border-radius:3px;
+  padding:.06rem .35rem; line-height:1.4; margin-left:.15rem;
 }
+.shadow-played { margin-top:.3rem; flex-shrink:0; }
 .shadow-played .card { pointer-events:none; }
 .shadow-played.empty { display:none; }
+
+/* Carte jouée par le joueur local, au-dessus de sa main */
+#my-played-area {
+  display:flex; justify-content:center; align-items:flex-end; padding:.15rem 0;
+  flex-shrink:0; gap:.4rem;
+}
+#my-played-area .played-by { font-size:.72rem; color:var(--text-dim); font-style:italic; }
 
 /* ── PILE DE DÉFAUSSE ── */
 .discard-area {
@@ -564,6 +570,10 @@ input:focus { border-color:var(--gold); }
   <p class="text-dim italic" id="home-welcome"></p>
   <div class="panel">
     <h2>Jouer</h2><hr class="divider">
+    <div id="rejoin-row" class="hidden">
+      <button class="btn primary" id="rejoin-btn" onclick="rejoinRoom()">↩ Reprendre la partie en cours</button>
+      <hr class="divider">
+    </div>
     <button class="btn primary" onclick="createRoom()">Créer un salon</button>
     <button class="btn dev"     onclick="createDevRoom()">🤖 Mode développeur (solo vs bots)</button>
     <hr class="divider">
@@ -646,9 +656,20 @@ input:focus { border-color:var(--gold); }
       </div>
     </div>
     <div id="loi-notice" class="hidden"></div>
+    <div id="action-bar" class="hidden">
+      <span id="ab-title"></span>
+      <span id="ab-msg"></span>
+      <div id="ab-choices"></div>
+    </div>
+    <div id="my-played-area" class="hidden"></div>
     <div id="hand-area">
       <p id="hand-label" class="text-dim">Votre main</p>
       <div id="my-hand"></div>
+    </div>
+    <div id="roundend-panel" class="hidden">
+      <h2>⚔️ Fin de manche</h2>
+      <div id="roundend-scores" class="text-dim"></div>
+      <button class="btn primary" id="next-round-btn" onclick="nextRound()">Manche suivante</button>
     </div>
   </div>
   <div id="chat-panel">
@@ -734,9 +755,10 @@ input:focus { border-color:var(--gold); }
 
     <!-- Rooms -->
     <div id="admin-rooms" class="admin-section">
-      <div class="flex gap2" style="align-items:center;">
+      <div class="flex gap2" style="align-items:center;flex-wrap:wrap;">
         <h2 style="color:#c070c0;">Parties en cours</h2>
         <button class="btn btn-sm" onclick="loadAdminRooms()">↻ Actualiser</button>
+        <button class="btn btn-sm danger" style="margin-left:auto" onclick="adminCloseAllRooms()">✕ Supprimer toutes les parties</button>
       </div>
       <div class="room-cards" id="admin-rooms-grid"></div>
     </div>
@@ -757,51 +779,6 @@ input:focus { border-color:var(--gold); }
   </div>
 </div>
 
-<!-- Trick Review -->
-<div id="trick-review-overlay" class="hidden">
-  <div id="trick-review-box">
-    <h2 id="trick-review-title">✅ Résultat du pli</h2>
-    <div id="trick-review-cards"></div>
-    <div id="trick-review-effects"></div>
-    <div id="trick-countdown-bar"><div id="trick-countdown-fill" style="width:100%"></div></div>
-    <div class="flex gap2" style="justify-content:flex-end;">
-      <button class="btn btn-sm primary hidden" id="trick-continue-btn" onclick="continueTrick()">Continuer ▶</button>
-    </div>
-  </div>
-</div>
-
-<!-- Interaction -->
-<div id="interaction-overlay" class="hidden">
-  <div id="interaction-box">
-    <div id="int-scrollable">
-      <h2 id="int-title">Action requise</h2>
-      <p  id="int-msg"></p>
-      <div id="int-choices" class="interaction-choices"></div>
-    </div>
-    <div id="int-footer">
-      <button class="btn btn-sm" id="int-confirm" onclick="confirmInteraction()">Confirmer</button>
-    </div>
-  </div>
-</div>
-
-<!-- Secret Reveal -->
-<div id="secret-overlay" class="hidden">
-  <div id="secret-box">
-    <h2 id="secret-title">Main révélée</h2>
-    <p  id="secret-msg"  class="text-dim"></p>
-    <div id="secret-cards"></div>
-    <button class="btn btn-sm primary" onclick="document.getElementById('secret-overlay').classList.add('hidden')">Fermer</button>
-  </div>
-</div>
-
-<!-- Round End -->
-<div id="roundend-overlay" class="hidden">
-  <div id="roundend-box">
-    <h2>⚔️ Fin de manche</h2>
-    <div id="roundend-scores" class="text-dim"></div>
-    <button class="btn primary" id="next-round-btn" onclick="nextRound()">Manche suivante</button>
-  </div>
-</div>
 
 </div><!-- #app -->
 
@@ -877,11 +854,34 @@ document.getElementById('auth-pass').addEventListener('keydown', e => { if(e.key
 // HOME
 // ─────────────────────────────────────────────────────────────────
 function showHome() {
+  // Sauvegarder la room en cours avant de quitter (pour le bouton "Reprendre")
+  if (S.room_id) sessionStorage.setItem('last_room', S.room_id);
   if (S.ws) { S.ws.close(); S.ws = null; }
   S.room_id = null; S.gs = null;
   showScreen('home-screen');
   document.getElementById('home-welcome').textContent = `Bienvenue, ${S.me?.username || ''} ✦`;
   document.getElementById('admin-btn-home').classList.toggle('hidden', !S.me?.is_admin);
+  // Bouton "Reprendre" si une room est mémorisée
+  const lastRoom = sessionStorage.getItem('last_room');
+  const rejoinRow = document.getElementById('rejoin-row');
+  if (lastRoom) {
+    document.getElementById('rejoin-btn').textContent = `↩ Reprendre la partie en cours (${lastRoom})`;
+    rejoinRow.classList.remove('hidden');
+  } else {
+    rejoinRow.classList.add('hidden');
+  }
+}
+async function rejoinRoom() {
+  const rid = sessionStorage.getItem('last_room');
+  if (!rid) return;
+  try {
+    await api('GET', `/api/rooms/${rid}`);
+    S.room_id = rid; connectWS(rid);
+  } catch(e) {
+    sessionStorage.removeItem('last_room');
+    document.getElementById('rejoin-row').classList.add('hidden');
+    showErr('La partie n\'existe plus.');
+  }
 }
 async function createRoom() {
   try { const {room_id} = await api('POST','/api/rooms'); await _joinRoomId(room_id); }
@@ -899,6 +899,7 @@ async function joinRoom() {
 async function _joinRoomId(rid) {
   try { await api('GET',`/api/rooms/${rid}`); }
   catch(e) { showErr(e.message); return; }
+  sessionStorage.setItem('last_room', rid);
   S.room_id = rid; connectWS(rid);
 }
 function goHome() { showHome(); }
@@ -931,7 +932,7 @@ function handleMsg(msg) {
 // ─────────────────────────────────────────────────────────────────
 function render(gs) {
   if      (gs.state==='lobby')        { renderLobby(gs); }
-  else if (gs.state==='playing')      { renderGame(gs); closeRoundEnd(); closeTrickReview(); }
+  else if (gs.state==='playing')      { _intState={}; document.getElementById('action-bar')?.classList.add('hidden'); renderGame(gs); closeRoundEnd(); closeTrickReview(); }
   else if (gs.state==='trick_review') { renderGame(gs); }
   else if (gs.state==='interactive')  { renderGame(gs); }
   else if (gs.state==='roundend')     { renderGame(gs); renderRoundEnd(gs); }
@@ -995,16 +996,15 @@ function playerShadowHTML(p, gs) {
   const playedCard = gs.current_trick?.[p.id];
   const count = Math.min(p.hand_count, 5);
   const cls = ['player-shadow', isNext ? 'my-turn-soon' : '', sameTeam ? 'same-team' : ''].filter(Boolean).join(' ');
-  // Mini cartes dos représentant la main
   const miniCards = Array.from({length: count}, (_,i) =>
     `<div class="shadow-card-mini" style="opacity:${0.5 + i*0.1}"></div>`).join('');
-  // Carte jouée en pleine taille devant le joueur
   const playedHTML = playedCard
     ? `<div class="shadow-played">${cardHTML(playedCard, false, false, true)}</div>`
     : `<div class="shadow-played empty"></div>`;
+  const arrow = isNext ? `<span class="turn-arrow">▶</span>` : '';
   return `<div class="${cls}" data-pid="${esc(p.id)}">
-    <div class="shadow-name">${esc(p.username)}${p.is_bot?' 🤖':''}</div>
-    <div class="shadow-cards">${miniCards}</div>
+    <div class="shadow-name">${esc(p.username)}${p.is_bot?' 🤖':''}${arrow}</div>
+    <div class="shadow-cards">${miniCards}<span class="shadow-count">${p.hand_count}</span></div>
     ${playedHTML}
   </div>`;
 }
@@ -1030,7 +1030,7 @@ function renderDiscardPile(gs) {
 
 function renderGame(gs) {
   showScreen('game-screen');
-  document.getElementById('roundend-overlay').classList.add('hidden');
+  if (gs.state !== 'roundend') document.getElementById('roundend-panel').classList.add('hidden');
 
   // Teams
   const tp = document.getElementById('teams-panel');
@@ -1052,6 +1052,36 @@ function renderGame(gs) {
       }).join('')}`;
     tp.appendChild(div);
   });
+
+  // Boutons bas du panel (bannière pli + Continuer + Quitter)
+  const quitWrap = document.createElement('div');
+  quitWrap.className = 'quit-game-btn';
+  if (gs.state === 'trick_review') {
+    if (_lastTrickMsg) {
+      const bannerDiv = document.createElement('div');
+      bannerDiv.className = 'trick-banner';
+      const effects = (_lastTrickMsg.messages||[]).join(' · ');
+      bannerDiv.innerHTML =
+        `<span class="tb-title">✅ ${esc(_lastTrickMsg.winner_name)} remporte le pli !</span>` +
+        (effects ? `<span class="tb-effects">${esc(effects)}</span>` : '');
+      quitWrap.appendChild(bannerDiv);
+    }
+    if (gs.host_id === S.me?.id) {
+      const cont = document.createElement('button');
+      cont.className = 'btn btn-sm primary';
+      cont.style.cssText = 'width:100%;margin-top:.35rem;margin-bottom:.35rem';
+      cont.textContent = 'Continuer ▶';
+      cont.onclick = continueTrick;
+      quitWrap.appendChild(cont);
+    }
+  }
+  const quitBtn = document.createElement('button');
+  quitBtn.className = 'btn btn-sm danger';
+  quitBtn.style.width = '100%';
+  quitBtn.textContent = 'Quitter la partie';
+  quitBtn.onclick = showHome;
+  quitWrap.appendChild(quitBtn);
+  tp.appendChild(quitWrap);
 
   // Turn indicator
   const ntp = gs.next_to_play;
@@ -1081,14 +1111,28 @@ function renderGame(gs) {
   document.getElementById('player-left').innerHTML  = pos.left  ? playerShadowHTML(pos.left,  gs) : '';
   document.getElementById('player-right').innerHTML = pos.right ? playerShadowHTML(pos.right, gs) : '';
 
-  // Trick (cartes au centre — uniquement si la carte n'est pas déjà affichée par une ombre)
+  // Trick : cartes au centre pour les joueurs sans ombre ; carte locale au-dessus de la main
   const playersWithShadow = new Set([pos.left?.id, pos.right?.id, ...(pos.top||[]).map(p=>p.id)].filter(Boolean));
   const tc = document.getElementById('trick-cards');
   tc.innerHTML='';
   const trickEntries = Object.entries(gs.current_trick||{});
-  // On n'affiche dans trick-cards que les cartes du joueur local (les autres sont dans leurs ombres)
-  const centerEntries = trickEntries.filter(([ppid]) => ppid === S.me?.id || !playersWithShadow.has(ppid));
   document.getElementById('trick-label').textContent = trickEntries.length ? 'Pli en cours' : 'Aucune carte en jeu';
+
+  // Carte jouée par le joueur local → #my-played-area
+  const myPlayedCard = gs.current_trick?.[S.me?.id];
+  const myPlayedArea = document.getElementById('my-played-area');
+  if (myPlayedCard) {
+    const wrap = document.createElement('div');
+    wrap.className = 'played-wrapper'; wrap.dataset.pid = S.me?.id;
+    wrap.innerHTML = cardHTML(myPlayedCard, false, false, true) + `<span class="played-by">Votre carte</span>`;
+    myPlayedArea.innerHTML = ''; myPlayedArea.appendChild(wrap);
+    myPlayedArea.classList.remove('hidden');
+  } else {
+    myPlayedArea.innerHTML = ''; myPlayedArea.classList.add('hidden');
+  }
+
+  // Autres joueurs sans ombre (cas rare) → centre
+  const centerEntries = trickEntries.filter(([ppid]) => ppid !== S.me?.id && !playersWithShadow.has(ppid));
   centerEntries.forEach(([ppid,card])=>{
     const pl = gs.players.find(p=>p.id===ppid);
     const wrap = document.createElement('div');
@@ -1123,6 +1167,7 @@ function renderGame(gs) {
       const el = document.createElement('div');
       el.innerHTML = cardHTML(card, false, unplay, false);
       const c = el.firstElementChild;
+      c.dataset.cardId = card.id;
       if (!unplay) c.addEventListener('click', ()=>playCard(card.id));
       myHand.appendChild(c);
     });
@@ -1130,6 +1175,9 @@ function renderGame(gs) {
 
   // Last trick tab
   renderLastTrick(gs);
+
+  // Cibles interactives (si état interactif en cours)
+  applyInteractionTargets();
 
   // Gameover CTA
   document.getElementById('gameover-btn')?.remove();
@@ -1203,60 +1251,28 @@ let _lastTrickMsg = null;
 function showTrickReview(msg) {
   _lastTrickMsg = msg;
   const gs = S.gs;
-  const AUTO_MS = msg.auto_continue_ms || 0;
-  document.getElementById('trick-review-title').textContent = `✅ ${msg.winner_name} remporte le pli !`;
-  const cardsEl = document.getElementById('trick-review-cards');
-  cardsEl.innerHTML='';
   const discardedIds = new Set((msg.discarded||[]).map(c=>c.id));
   const chainIds     = new Set(Object.values(msg.chain_discards||{}).map(c=>c.id));
-  const playedMap = gs ? gs.current_trick : {};
-  Object.entries(playedMap).forEach(([ppid, card]) => {
+
+  // Appliquer badges de statut directement sur les cartes du plateau
+  Object.entries(gs?.current_trick||{}).forEach(([ppid, card]) => {
     const player = gs.players.find(p=>p.id===ppid);
     const isDiscard = discardedIds.has(card.id) || chainIds.has(card.id);
     const isWinner  = ppid === msg.winner_pid;
-    const wrap = document.createElement('div');
-    wrap.className='card-wrapper-labeled';
-    wrap.dataset.pid = ppid;
-    wrap.dataset.discarded = String(isDiscard);
-    const cardEl = document.createElement('div'); cardEl.innerHTML = cardHTML(card,false,false,true);
-    const c = cardEl.firstElementChild;
-    if (isWinner) c.classList.add('winner-glow');
-    else if (isDiscard) c.classList.add('loser-fade');
-    wrap.appendChild(c);
-    const lbl = document.createElement('div');
-    lbl.style.color = isWinner ? 'var(--gold)' : (isDiscard ? '#e05050' : 'var(--text-dim)');
-    lbl.style.fontSize = '.78rem'; lbl.style.fontStyle = 'italic'; lbl.style.textAlign = 'center'; lbl.style.marginTop = '.3rem';
-    lbl.textContent = isWinner ? `★ ${player?.username||ppid}` :
-                      isDiscard ? `✕ Défaussée (${player?.username||ppid})` :
-                      `↩ Reprise (${player?.username||ppid})`;
-    wrap.appendChild(lbl); cardsEl.appendChild(wrap);
+    const cardEl = document.querySelector(
+      `.player-shadow[data-pid="${ppid}"] .shadow-played .card, .played-wrapper[data-pid="${ppid}"] .card`
+    );
+    if (cardEl) {
+      if (isWinner) cardEl.classList.add('winner-glow');
+      else if (isDiscard) cardEl.classList.add('loser-fade');
+      const badge = document.createElement('span');
+      badge.className = 'trick-status ' + (isWinner ? 'winner' : isDiscard ? 'discard' : 'ret');
+      badge.textContent = isWinner ? `★ ${player?.username||ppid}` :
+                          isDiscard ? '✕ Défaussée' : '↩ Reprise';
+      cardEl.parentElement.appendChild(badge);
+    }
   });
-  const effEl = document.getElementById('trick-review-effects');
-  effEl.innerHTML='';
-  (msg.messages||[]).forEach(m=>{const s=document.createElement('span');s.textContent=m;effEl.appendChild(s);});
 
-  const isHost = gs?.host_id === S.me?.id;
-  document.getElementById('trick-continue-btn').classList.toggle('hidden', !isHost);
-
-  const bar = document.getElementById('trick-countdown-bar');
-  const fill = document.getElementById('trick-countdown-fill');
-  clearTimeout(_trickReviewTimer);
-  document.getElementById('trick-review-overlay').classList.remove('hidden');
-
-  if (AUTO_MS > 0) {
-    bar.style.display = 'block';
-    fill.style.transition='none'; fill.style.width='100%';
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      fill.style.transition=`width ${AUTO_MS}ms linear`; fill.style.width='0%';
-    }));
-    // Déclenche les animations puis ferme
-    _trickReviewTimer = setTimeout(()=>{
-      animateTrickEnd(S.gs, _lastTrickMsg);
-      setTimeout(()=>closeTrickReview(), 650);
-    }, AUTO_MS - 200);
-  } else {
-    bar.style.display = 'none';
-  }
 }
 
 // Fait "voler" un élément d'une position à une autre
@@ -1291,36 +1307,35 @@ function flyCard(fromEl, toEl) {
   }));
 }
 
-// Anime les cartes depuis l'overlay vers leurs destinations
+// Anime les cartes depuis le plateau vers leurs destinations
 function animateTrickEnd(gs, msg) {
   if (!msg || !gs) return;
   const discardEl = document.getElementById('discard-stack');
-  document.querySelectorAll('#trick-review-cards .card-wrapper-labeled').forEach(wrap => {
-    const cardEl = wrap.querySelector('.card');
-    if (!cardEl) return;
-    const isDiscard = wrap.dataset.discarded === 'true';
-    const pid = wrap.dataset.pid;
+  const discardedIds = new Set((msg.discarded||[]).map(c=>c.id));
+  const chainIds     = new Set(Object.values(msg.chain_discards||{}).map(c=>c.id));
 
-    if (isDiscard) {
-      if (discardEl) flyCard(cardEl, discardEl);
-      else { cardEl.style.transition='transform .4s,opacity .4s'; cardEl.style.transform='scale(0) translateY(20px)'; cardEl.style.opacity='0'; }
-    } else {
-      const isMine = pid === S.me?.id;
-      const destEl = isMine
+  Object.entries(gs.current_trick||{}).forEach(([pid, card]) => {
+    const isDiscard = discardedIds.has(card.id) || chainIds.has(card.id);
+    const cardEl = document.querySelector(
+      `.player-shadow[data-pid="${pid}"] .shadow-played .card, .played-wrapper[data-pid="${pid}"] .card`
+    );
+    if (!cardEl) return;
+    if (isDiscard && discardEl) {
+      flyCard(cardEl, discardEl);
+    } else if (!isDiscard) {
+      const destEl = pid === S.me?.id
         ? document.getElementById('hand-area')
         : document.querySelector(`.player-shadow[data-pid="${pid}"] .shadow-cards`);
       if (destEl) flyCard(cardEl, destEl);
-      else { cardEl.style.transition='transform .4s,opacity .4s'; cardEl.style.transform='scale(.8) translateY(-15px)'; cardEl.style.opacity='0'; }
     }
   });
 }
 
 function closeTrickReview() {
   clearTimeout(_trickReviewTimer);
-  document.getElementById('trick-review-overlay').classList.add('hidden');
-  document.querySelectorAll('.winner-glow,.loser-fade').forEach(el=>{
-    el.classList.remove('winner-glow','loser-fade');
-  });
+  document.querySelectorAll('.trick-status').forEach(el => el.remove());
+  document.querySelectorAll('.winner-glow,.loser-fade').forEach(el =>
+    el.classList.remove('winner-glow','loser-fade'));
 }
 
 function continueTrick() {
@@ -1375,127 +1390,215 @@ function renderLastTrick(gs) {
 // ROUND END
 // ─────────────────────────────────────────────────────────────────
 function renderRoundEnd(gs) {
-  const ov = document.getElementById('roundend-overlay');
-  ov.classList.remove('hidden');
+  document.getElementById('roundend-panel').classList.remove('hidden');
   document.getElementById('roundend-scores').textContent = gs.teams.map((t,i)=>`Équipe ${i+1} : ${t.wins}/2`).join(' · ');
   document.getElementById('next-round-btn').classList.toggle('hidden', gs.host_id!==S.me?.id);
 }
-function closeRoundEnd() { document.getElementById('roundend-overlay').classList.add('hidden'); }
+function closeRoundEnd() { document.getElementById('roundend-panel').classList.add('hidden'); }
 function nextRound()     { wsSend({action:'new_round'}); }
 
 // ─────────────────────────────────────────────────────────────────
-// INTERACTION
+// INTERACTION — plateau intégré
 // ─────────────────────────────────────────────────────────────────
 let _intState = {};
-function openInteraction(msg) {
-  const gs = S.gs;
-  _intState = { type: msg.interaction, selected: {} };
-  document.getElementById('int-title').textContent = interactionTitle(msg.interaction);
-  document.getElementById('int-msg').textContent   = msg.message;
-  const choices = document.getElementById('int-choices');
-  choices.innerHTML='';
-  const played = msg.played_cards || {};
-  const players = msg.players || [];
 
-  if (msg.interaction === 'loi') {
-    [['lower','Les suivants jouent < 15'],['higher','Les suivants jouent > 15']].forEach(([val,label])=>{
-      const btn=document.createElement('button'); btn.className='choice-btn'; btn.textContent=label;
-      btn.onclick=()=>{choices.querySelectorAll('.choice-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');_intState.selected.direction=val;};
-      choices.appendChild(btn);
+function openInteraction(msg) {
+  _intState = {
+    type:    msg.interaction,
+    selected:{},
+    players: msg.players     || [],
+    played:  msg.played_cards || {},
+    hand:    msg.hand        || [],
+  };
+
+  const bar = document.getElementById('action-bar');
+  document.getElementById('ab-title').textContent = interactionTitle(msg.interaction);
+  document.getElementById('ab-choices').innerHTML = '';
+  const abMsg = document.getElementById('ab-msg');
+  const itype = msg.interaction;
+
+  if (itype === 'loi') {
+    abMsg.textContent = 'Contrainte pour les joueurs suivants :';
+    [['lower','< 15'],['higher','> 15']].forEach(([val,label]) => {
+      const btn = document.createElement('button'); btn.className='ab-btn'; btn.textContent=`Jouer ${label}`;
+      btn.onclick = () => { _intState.selected.direction=val; sendInteraction(); };
+      document.getElementById('ab-choices').appendChild(btn);
     });
-  } else if (msg.interaction === 'secret') {
-    ['show_to','see_from'].forEach(val=>{
-      const label = val==='show_to'?'Montrer ma main':'Voir la main d\'un joueur';
-      const btn=document.createElement('button'); btn.className='choice-btn'; btn.textContent=label;
-      btn.onclick=()=>{choices.querySelectorAll('.choice-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');_intState.selected.choice=val;renderPlayerPicker(players,choices,'target_pid');};
-      choices.appendChild(btn);
-    });
-  } else if (['reve','absolu'].includes(msg.interaction)) {
-    renderPlayerPicker(players, choices, 'target_pid');
-    if (msg.interaction==='absolu') {
-      const note=document.createElement('p'); note.style='font-size:.78rem;color:var(--text-dim);margin-top:.3rem;';
-      note.textContent='Sélectionnez un joueur. Les cartes seront échangées automatiquement.'; choices.appendChild(note);
-    }
-  } else if (msg.interaction === 'reve_response') {
-    // La cible d'un Le Rêve choisit une carte de sa main à jouer devant l'auteur du Rêve
-    (msg.hand || []).forEach(card => {
-      const el = document.createElement('div'); el.className = 'card-choice'; el.dataset.cardId = card.id;
-      el.innerHTML = cardHTML(card) + `<span class="cname">${esc(card.name)}</span>`;
-      el.onclick = () => {
-        choices.querySelectorAll('.card-choice').forEach(c => c.classList.remove('selected'));
-        el.classList.add('selected');
-        _intState.selected.card_id = card.id;
+  } else if (itype === 'secret') {
+    abMsg.textContent = 'Montrez votre main ou voyez celle d\'un joueur ?';
+    ['show_to','see_from'].forEach(val => {
+      const label = val==='show_to' ? 'Montrer ma main' : 'Voir une main';
+      const btn = document.createElement('button'); btn.className='ab-btn'; btn.textContent=label;
+      btn.onclick = () => {
+        document.getElementById('ab-choices').querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
+        _intState.selected.choice = val;
+        abMsg.textContent = 'Cliquez sur le joueur cible sur le plateau.';
+        applyInteractionTargets();
       };
-      choices.appendChild(el);
+      document.getElementById('ab-choices').appendChild(btn);
     });
-  } else if (['jalousie','trahison','colere'].includes(msg.interaction)) {
-    const pEntries=Object.entries(played).filter(([ppid])=>ppid!==S.me?.id);
-    pEntries.forEach(([ppid,card])=>{
-      const el=document.createElement('div'); el.className='card-choice'; el.dataset.cardId=card.id;
-      el.innerHTML=cardHTML(card)+`<span class="cname">de ${esc(gs?.players?.find(p=>p.id===ppid)?.username||ppid)}</span>`;
-      el.onclick=()=>{choices.querySelectorAll('.card-choice').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');_intState.selected.target_card_id=card.id;_intState.selected.target_pid=ppid;};
-      choices.appendChild(el);
-    });
-    if (msg.interaction==='trahison') {
-      const me=gs?.players?.find(p=>p.id===S.me?.id);
-      const hd=document.createElement('div'); hd.innerHTML='<p style="font-size:.78rem;color:var(--text-dim);width:100%;margin-top:.5rem;">Votre carte à échanger :</p>'; choices.appendChild(hd);
-      (me?.hand||[]).forEach(card=>{
-        if (!card.back) {
-          const el=document.createElement('div'); el.className='card-choice'; el.dataset.handCardId=card.id;
-          el.innerHTML=cardHTML(card)+`<span class="cname">${esc(card.name)}</span>`;
-          el.onclick=()=>{choices.querySelectorAll('[data-hand-card-id]').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');_intState.selected.hand_card_id=card.id;};
-          choices.appendChild(el);
-        }
-      });
-    }
+  } else if (itype === 'reve') {
+    abMsg.textContent = 'Cliquez sur un joueur pour y poser la carte, ou gardez-la devant vous.';
+    const btn = document.createElement('button'); btn.className='ab-btn'; btn.textContent='Garder devant moi';
+    btn.onclick = () => sendInteraction();
+    document.getElementById('ab-choices').appendChild(btn);
+  } else if (itype === 'absolu') {
+    abMsg.textContent = 'Cliquez sur un joueur pour échanger une carte.';
+  } else if (itype === 'jalousie') {
+    abMsg.textContent = 'Cliquez sur une carte adverse pour l\'échanger avec la vôtre.';
+  } else if (itype === 'colere') {
+    abMsg.textContent = 'Cliquez sur une carte pour la renvoyer en main.';
+  } else if (itype === 'trahison') {
+    abMsg.textContent = '① Cliquez sur une carte de votre main à donner.';
+  } else if (itype === 'reve_response') {
+    abMsg.textContent = 'Cliquez sur une carte de votre main à jouer devant l\'auteur du Rêve.';
   }
-  document.getElementById('interaction-overlay').classList.remove('hidden');
+
+  bar.classList.remove('hidden');
+  applyInteractionTargets();
 }
 
-function renderPlayerPicker(players, container, key) {
-  container.querySelector('.player-picks')?.remove();
-  const wrap=document.createElement('div'); wrap.className='player-picks';
-  wrap.style='display:flex;flex-wrap:wrap;gap:.4rem;width:100%;margin-top:.3rem;';
-  players.forEach(pl=>{
-    const btn=document.createElement('button'); btn.className='choice-btn'; btn.textContent=pl.username;
-    btn.onclick=()=>{wrap.querySelectorAll('.choice-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');_intState.selected[key]=pl.id;};
-    wrap.appendChild(btn);
+function applyInteractionTargets() {
+  // Effacer les anciens ciblages
+  document.querySelectorAll('.int-target,.int-selected').forEach(el => {
+    el.classList.remove('int-target','int-selected');
+    el.onclick = null;
   });
-  container.appendChild(wrap);
+
+  const gs = S.gs;
+  const itype = _intState.type;
+  if (!itype || !gs || gs.state !== 'interactive') return;
+
+  function target(el, fn) {
+    if (!el) return;
+    el.classList.add('int-target');
+    el.onclick = e => { e.stopPropagation(); fn(); };
+  }
+
+  if (['jalousie','colere'].includes(itype)) {
+    // Cartes jouées des autres joueurs (dans les ombres ou trick-cards)
+    document.querySelectorAll('.player-shadow').forEach(shadow => {
+      const pid = shadow.dataset.pid;
+      if (!pid || pid === S.me?.id) return;
+      const card = gs.current_trick?.[pid];
+      const cardEl = shadow.querySelector('.shadow-played .card');
+      if (!card || !cardEl) return;
+      target(cardEl, () => {
+        _intState.selected = { target_card_id: card.id, target_pid: pid };
+        sendInteraction();
+      });
+    });
+    document.querySelectorAll('.played-wrapper').forEach(wrap => {
+      const pid = wrap.dataset.pid;
+      if (!pid || pid === S.me?.id) return;
+      const card = gs.current_trick?.[pid];
+      const cardEl = wrap.querySelector('.card');
+      if (!card || !cardEl) return;
+      target(cardEl, () => {
+        _intState.selected = { target_card_id: card.id, target_pid: pid };
+        sendInteraction();
+      });
+    });
+
+  } else if (itype === 'trahison') {
+    if (!_intState.selected.hand_card_id) {
+      // Étape 1 : cartes en main
+      document.querySelectorAll('#my-hand .card').forEach(cardEl => {
+        const cid = cardEl.dataset.cardId;
+        if (!cid || cardEl.classList.contains('card-back')) return;
+        target(cardEl, () => {
+          cardEl.classList.remove('int-target');
+          cardEl.classList.add('int-selected');
+          cardEl.onclick = null;
+          _intState.selected.hand_card_id = cid;
+          document.getElementById('ab-msg').textContent = '② Cliquez sur une carte adverse en jeu.';
+          applyInteractionTargets();
+        });
+      });
+    } else {
+      // Étape 2 : cartes adverses
+      document.querySelectorAll('.player-shadow').forEach(shadow => {
+        const pid = shadow.dataset.pid;
+        if (!pid || pid === S.me?.id) return;
+        const card = gs.current_trick?.[pid];
+        const cardEl = shadow.querySelector('.shadow-played .card');
+        if (!card || !cardEl) return;
+        target(cardEl, () => {
+          _intState.selected.target_card_id = card.id;
+          _intState.selected.target_pid     = pid;
+          sendInteraction();
+        });
+      });
+      // Garder la main sélectionnée visible
+      document.querySelectorAll('#my-hand .card').forEach(cardEl => {
+        if (cardEl.dataset.cardId === _intState.selected.hand_card_id)
+          cardEl.classList.add('int-selected');
+      });
+    }
+
+  } else if (['reve','absolu'].includes(itype)) {
+    const allowed = new Set(_intState.players.map(p=>p.id));
+    document.querySelectorAll('.player-shadow').forEach(shadow => {
+      const pid = shadow.dataset.pid;
+      if (!pid || !allowed.has(pid)) return;
+      target(shadow, () => { _intState.selected.target_pid=pid; sendInteraction(); });
+    });
+
+  } else if (itype === 'secret' && _intState.selected.choice) {
+    const allowed = new Set(_intState.players.map(p=>p.id));
+    document.querySelectorAll('.player-shadow').forEach(shadow => {
+      const pid = shadow.dataset.pid;
+      if (!pid || !allowed.has(pid)) return;
+      target(shadow, () => { _intState.selected.target_pid=pid; sendInteraction(); });
+    });
+
+  } else if (itype === 'reve_response') {
+    document.querySelectorAll('#my-hand .card').forEach(cardEl => {
+      const cid = cardEl.dataset.cardId;
+      if (!cid || cardEl.classList.contains('card-back')) return;
+      target(cardEl, () => { _intState.selected.card_id=cid; sendInteraction(); });
+    });
+  }
+}
+
+function sendInteraction() {
+  const t = _intState.type, sel = _intState.selected, gs = S.gs;
+  if (t === 'absolu') {
+    const me     = gs?.players?.find(p=>p.id===S.me?.id);
+    const them   = gs?.players?.find(p=>p.id===sel.target_pid);
+    sel.my_card_id    = me?.hand?.find(c=>!c.back)?.id;
+    sel.their_card_id = them?.hand?.[0]?.id;
+  }
+  wsSend({action:'interaction_response', type:t, ...sel});
+  _intState = {};
+  document.getElementById('action-bar').classList.add('hidden');
+  document.querySelectorAll('.int-target,.int-selected').forEach(el => {
+    el.classList.remove('int-target','int-selected');
+    el.onclick = null;
+  });
 }
 
 function interactionTitle(t) {
   return {loi:'⚖️ La Loi',reve:'💭 Le Rêve',jalousie:'🔀 La Jalousie',
           secret:'🤫 Le Secret',colere:'😡 La Colère',trahison:'🗡️ La Trahison',
-          absolu:'✨ L\'Absolu', reve_response:'💭 Le Rêve : à vous de jouer'}[t]||'Action';
-}
-
-function confirmInteraction() {
-  const t=_intState.type, sel=_intState.selected, gs=S.gs;
-  if (t==='loi'&&!sel.direction){showErr('Choisissez une contrainte.');return;}
-  if (['reve','absolu'].includes(t)&&!sel.target_pid){showErr('Choisissez un joueur.');return;}
-  if (['jalousie','colere'].includes(t)&&!sel.target_card_id){showErr('Choisissez une carte.');return;}
-  if (t==='trahison'&&(!sel.target_card_id||!sel.hand_card_id)){showErr('Choisissez une carte en jeu et une de votre main.');return;}
-  if (t==='secret'&&(!sel.choice||!sel.target_pid)){showErr('Choisissez une action et un joueur.');return;}
-  if (t==='reve_response'&&!sel.card_id){showErr('Choisissez une carte de votre main.');return;}
-  if (t==='absolu') {
-    const me=gs?.players?.find(p=>p.id===S.me?.id);
-    const target=gs?.players?.find(p=>p.id===sel.target_pid);
-    sel.my_card_id   = me?.hand?.find(c=>!c.back)?.id;
-    sel.their_card_id = target?.hand?.[0]?.id;
-  }
-  wsSend({action:'interaction_response',type:t,...sel});
-  document.getElementById('interaction-overlay').classList.add('hidden');
+          absolu:'✨ L\'Absolu', reve_response:'💭 Le Rêve — à vous de jouer'}[t]||'Action';
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SECRET REVEAL
+// SECRET REVEAL — affiché dans le chat
 // ─────────────────────────────────────────────────────────────────
 function showSecretReveal(msg) {
-  document.getElementById('secret-title').textContent='🔍 Main révélée';
-  document.getElementById('secret-msg').textContent=msg.msg||'';
-  document.getElementById('secret-cards').innerHTML=(msg.cards||[]).map(c=>cardHTML(c)).join('');
-  document.getElementById('secret-overlay').classList.remove('hidden');
+  const chatMessages = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.style.cssText = 'border:1px solid var(--gold-dim);border-radius:var(--r);padding:.5rem .7rem;margin:.3rem 0;';
+  div.innerHTML =
+    `<div style="font-size:.75rem;color:var(--gold);font-family:Cinzel,serif;margin-bottom:.35rem">🔍 ${esc(msg.msg||'Main révélée')}</div>` +
+    `<div style="display:flex;flex-wrap:wrap;gap:.25rem">${(msg.cards||[]).map(c=>cardHTML(c,false,true,true)).join('')}</div>`;
+  chatMessages.appendChild(div);
+  switchChatTab('chat');
+  const container = document.getElementById('chat-tab-chat');
+  if (container) container.scrollTop = container.scrollHeight;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1744,6 +1847,15 @@ function adminCloseRoom(rid) {
     try { await api('POST',`/api/admin/rooms/${rid}/close`); showOk(`Salon ${rid} fermé.`); loadAdminRooms(); }
     catch(e) { showErr(e.message); }
   });
+}
+function adminCloseAllRooms() {
+  openModal('Supprimer toutes les parties', 'Fermer toutes les parties en cours ? Tous les joueurs seront déconnectés.', '', async()=>{
+    try {
+      const r = await api('POST','/api/admin/rooms/close-all');
+      showOk(`${r.closed} partie(s) supprimée(s).`);
+      loadAdminRooms();
+    } catch(e) { showErr(e.message); }
+  }, 'Supprimer tout', true);
 }
 
 // ─────────────────────────────────────────────────────────────────
