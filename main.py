@@ -758,27 +758,20 @@ class CreateRoomBody(BaseModel):
 class AdminResetPwBody(BaseModel):
     new_password: str
 
+class AdminCreateUserBody(BaseModel):
+    username: str
+    password: str
+    is_admin: bool = False
+
+class ChangePasswordBody(BaseModel):
+    old_password: str
+    new_password: str
+
 # ── Auth ──────────────────────────────────────────────────────────
 
 @app.post("/api/register")
 def register(body: AuthBody):
-    if len(body.username) < 2 or len(body.password) < 4:
-        raise HTTPException(400, "Nom ou mot de passe trop court (min 4 car.)")
-    db = get_db(); uid = str(uuid.uuid4())
-    try:
-        db.execute(
-            "INSERT INTO users (id,username,password_hash,is_admin,is_banned,created_at) VALUES (?,?,?,0,0,?)",
-            (uid, body.username.strip(), hash_pw(body.password), int(time.time()))
-        )
-        db.commit()
-    except Exception:
-        raise HTTPException(400, "Nom d'utilisateur déjà pris")
-    finally:
-        db.close()
-    token = str(uuid.uuid4()); sessions[token] = uid
-    resp = JSONResponse({"ok": True, "username": body.username, "id": uid, "is_admin": False})
-    resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=86400*30)
-    return resp
+    raise HTTPException(403, "L'inscription publique est désactivée. Contactez l'administrateur.")
 
 @app.post("/api/login")
 def login(body: AuthBody):
@@ -961,6 +954,78 @@ def admin_close_all_rooms(_admin: str = Depends(require_admin)):
     count = len(rooms)
     rooms.clear()
     return {"ok": True, "closed": count}
+
+@app.post("/api/admin/create-user")
+def admin_create_user(body: AdminCreateUserBody, _admin: str = Depends(require_admin)):
+    if len(body.username) < 2 or len(body.password) < 4:
+        raise HTTPException(400, "Nom ou mot de passe trop court (min 4 car.)")
+    db = get_db(); uid = str(uuid.uuid4())
+    try:
+        db.execute(
+            "INSERT INTO users (id,username,password_hash,is_admin,is_banned,created_at) VALUES (?,?,?,?,0,?)",
+            (uid, body.username.strip(), hash_pw(body.password), 1 if body.is_admin else 0, int(time.time()))
+        )
+        db.commit()
+    except Exception:
+        raise HTTPException(400, "Nom d'utilisateur déjà pris")
+    finally:
+        db.close()
+    return {"ok": True, "id": uid}
+
+@app.get("/api/admin/export")
+def admin_export(_admin: str = Depends(require_admin)):
+    db = get_db()
+    users   = [dict(r) for r in db.execute("SELECT * FROM users").fetchall()]
+    history = [dict(r) for r in db.execute("SELECT * FROM game_history").fetchall()]
+    db.close()
+    return {"users": users, "game_history": history, "exported_at": int(time.time())}
+
+class ImportBody(BaseModel):
+    users: list
+    game_history: list
+
+@app.post("/api/admin/import")
+def admin_import(body: ImportBody, _admin: str = Depends(require_admin)):
+    db = get_db()
+    for u in body.users:
+        db.execute(
+            "INSERT OR REPLACE INTO users (id,username,password_hash,is_admin,is_banned,created_at) VALUES (?,?,?,?,?,?)",
+            (u["id"], u["username"], u["password_hash"], u.get("is_admin",0), u.get("is_banned",0), u.get("created_at",0))
+        )
+    for h in body.game_history:
+        db.execute(
+            "INSERT OR REPLACE INTO game_history (id,player_id,game_id,result,players,teams,duration,played_at) VALUES (?,?,?,?,?,?,?,?)",
+            (h["id"], h["player_id"], h["game_id"], h["result"], h["players"], h["teams"], h.get("duration",0), h.get("played_at",0))
+        )
+    db.commit(); db.close()
+    return {"ok": True}
+
+@app.post("/api/admin/reset-stats")
+def admin_reset_stats(_admin: str = Depends(require_admin)):
+    db = get_db()
+    db.execute("DELETE FROM game_history")
+    db.commit(); db.close()
+    return {"ok": True}
+
+@app.post("/api/admin/users/{uid}/reset-stats")
+def admin_reset_user_stats(uid: str, _admin: str = Depends(require_admin)):
+    db = get_db()
+    db.execute("DELETE FROM game_history WHERE player_id=?", (uid,))
+    db.commit(); db.close()
+    return {"ok": True}
+
+@app.post("/api/change-password")
+def change_password(body: ChangePasswordBody, pid: str = Depends(get_current_user)):
+    if len(body.new_password) < 4:
+        raise HTTPException(400, "Nouveau mot de passe trop court (min 4 car.)")
+    db = get_db()
+    row = db.execute("SELECT password_hash FROM users WHERE id=?", (pid,)).fetchone()
+    if not row or row["password_hash"] != hash_pw(body.old_password):
+        db.close()
+        raise HTTPException(401, "Ancien mot de passe incorrect")
+    db.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_pw(body.new_password), pid))
+    db.commit(); db.close()
+    return {"ok": True}
 
 # ─────────────────────────────────────────────────────────────────
 # WEBSOCKET
@@ -1261,14 +1326,16 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         await _start_turn_timer(room)
 
                 elif itype == "absolu":
-                    tpid = raw.get("target_pid"); my_cid = raw.get("my_card_id"); their_cid = raw.get("their_card_id")
-                    if tpid and my_cid and their_cid and tpid in room.players:
-                        mc = next((c for c in room.hands.get(pid,[])  if c["id"] == my_cid),    None)
-                        tc = next((c for c in room.hands.get(tpid,[]) if c["id"] == their_cid), None)
-                        if mc and tc:
-                            room.hands[pid]  = [tc if c["id"]==my_cid   else c for c in room.hands[pid]]
-                            room.hands[tpid] = [mc if c["id"]==their_cid else c for c in room.hands[tpid]]
-                            await broadcast(room,{"type":"chat","msg":f"✨ L'Absolu : {username} échange une carte avec {room.players[tpid]['username']}."})
+                    tpid = raw.get("target_pid"); my_cid = raw.get("my_card_id")
+                    if tpid and my_cid and tpid in room.players:
+                        mc = next((c for c in room.hands.get(pid, []) if c["id"] == my_cid), None)
+                        their_hand = room.hands.get(tpid, [])
+                        tc_card = random.choice(their_hand) if their_hand else None
+                        if mc and tc_card:
+                            room.hands[pid]  = [tc_card if c["id"] == my_cid else c for c in room.hands[pid]]
+                            room.hands[tpid] = [mc if c["id"] == tc_card["id"] else c for c in room.hands[tpid]]
+                            await broadcast(room, {"type": "chat",
+                                "msg": f"✨ L'Absolu : {username} échange {mc['name']} avec une carte de {room.players[tpid]['username']}."})
                     room.pending_interaction = None; room.state = "playing"
                     await send_state(room)
                     if room.dev_mode: asyncio.create_task(run_bots(room))

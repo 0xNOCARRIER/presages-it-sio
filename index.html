@@ -40,25 +40,25 @@
 @media (min-width: 2560px) { :root { --cs: 1.40; } }
 
 [data-theme="light"] {
-  --bg:        #f4f0e8;
-  --surface:   #fffdf6;
-  --border:    #d8cdb0;
-  --gold:      #8a6b1a;
-  --gold-dim:  #b8952a;
-  --text:      #2a2010;
-  --text-dim:  #8a7858;
-  --rouge:     #b03020; --rouge-glow: #b0302044;
-  --bleu:      #1a6090; --bleu-glow:  #1a609044;
-  --vert:      #1a8040; --vert-glow:  #1a804044;
-  --jaune:     #c07810; --jaune-glow: #c0781044;
-  --multi:     #7040a0; --multi-glow: #7040a044;
+  --bg:        #3a362f;
+  --surface:   #484038;
+  --border:    #5e5648;
+  --gold:      #d4a83a;
+  --gold-dim:  #a07828;
+  --text:      #e8e0d0;
+  --text-dim:  #a09880;
+  --rouge:     #d05040; --rouge-glow: #d0504044;
+  --bleu:      #4090c0; --bleu-glow:  #4090c044;
+  --vert:      #50a860; --vert-glow:  #50a86044;
+  --jaune:     #d09020; --jaune-glow: #d0902044;
+  --multi:     #9060c0; --multi-glow: #9060c044;
 }
 [data-theme="light"] body::before {
-  background: radial-gradient(ellipse 90% 60% at 50% -10%, #e8d8c0 0%, transparent 65%);
+  background: radial-gradient(ellipse 90% 60% at 50% -10%, #4a3e2a 0%, transparent 65%);
 }
 
 #theme-toggle {
-  position: fixed; top: .6rem; right: .8rem; z-index: 1000;
+  position: fixed; bottom: .75rem; left: .75rem; z-index: 1000;
   background: transparent; border: 1px solid var(--border);
   color: var(--text-dim); font-size: 1rem; padding: .3rem .55rem;
   border-radius: var(--r); cursor: pointer; transition: border-color .2s, color .2s;
@@ -226,12 +226,12 @@ input:focus { border-color:var(--gold); }
 
 #trick-area {
   flex:1; display:flex; flex-direction:column; align-items:stretch; justify-content:center;
-  gap:.5rem; position:relative; overflow:hidden; min-height:0;
+  gap:.5rem; position:relative; overflow:visible; min-height:0;
 }
 #trick-label { font-size:.75rem; color:var(--text-dim); font-style:italic; }
 #trick-cards { display:flex; flex-wrap:wrap; gap:calc(.9rem * var(--cs)); justify-content:center; align-items:flex-end; }
 
-#hand-area { text-align:center; }
+#hand-area { text-align:center; position:relative; z-index:10; background:var(--bg); }
 #hand-label { font-size:.72rem; color:var(--text-dim); margin-bottom:.4rem; }
 #my-hand    { display:flex; flex-wrap:wrap; gap:calc(.55rem * var(--cs)); justify-content:center; padding:.3rem; min-height:calc(100px * var(--cs)); }
 #loi-notice {
@@ -357,13 +357,19 @@ input:focus { border-color:var(--gold); }
   box-shadow:0 0 14px rgba(95,211,138,.4) !important;
 }
 
-/* ── FIN DE MANCHE (panel centré sur le plateau, non plein-écran) ── */
-#roundend-panel {
+/* ── FIN DE MANCHE / FIN DE PARTIE (panels centrés sur le plateau) ── */
+#roundend-panel, #gameover-panel {
   position:absolute; left:50%; top:45%; transform:translate(-50%,-50%);
   background:var(--surface); border:1px solid var(--gold-dim); border-radius:var(--r);
   padding:1.4rem; text-align:center; display:flex; flex-direction:column; gap:.8rem;
-  z-index:20; animation:bannerIn .3s ease forwards; min-width:200px;
+  z-index:20; animation:bannerIn .3s ease forwards; min-width:220px;
 }
+#gameover-panel { border-color:var(--gold); }
+#gameover-verdict {
+  font-family:'Cinzel',serif; font-size:1.4rem; font-weight:600;
+}
+#gameover-verdict.win  { color:var(--gold); }
+#gameover-verdict.loss { color:var(--text-dim); }
 
 /* ── ADMIN MODAL (conservé) ── */
 
@@ -492,7 +498,7 @@ input:focus { border-color:var(--gold); }
 
 /* ── PLAYER SHADOWS (ombres joueurs autour de la table) ── */
 #players-top   { display:flex; gap:calc(.5rem * var(--cs)); justify-content:center; flex-shrink:0; flex-wrap:wrap; }
-#table-middle  { display:flex; gap:calc(.5rem * var(--cs)); align-items:center; flex:1; min-height:0; overflow:hidden; }
+#table-middle  { display:flex; gap:calc(.5rem * var(--cs)); align-items:center; flex:1; min-height:0; overflow:visible; }
 #player-left, #player-right {
   width:calc(170px * var(--cs)); flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
 }
@@ -539,7 +545,7 @@ input:focus { border-color:var(--gold); }
 /* Carte jouée par le joueur local, au-dessus de sa main */
 #my-played-area {
   display:flex; justify-content:center; align-items:flex-end; padding:.15rem 0;
-  flex-shrink:0; gap:.4rem;
+  flex-shrink:0; gap:.4rem; position:relative; z-index:10; background:var(--bg);
 }
 #my-played-area .played-by { font-size:.72rem; color:var(--text-dim); font-style:italic; }
 
@@ -610,15 +616,22 @@ input:focus { border-color:var(--gold); }
 <div id="error-banner"   class="hidden"></div>
 <div id="success-banner" class="hidden"></div>
 
+<!-- ══════════════════ GATE ══════════════════ -->
+<div id="gate-screen" class="full-center">
+  <h1>✦ Présages</h1>
+  <p class="text-dim italic">Accès privé</p>
+  <div class="panel">
+    <label class="text-dim">Mot de passe d'accès</label>
+    <input type="password" id="gate-pass" placeholder="••••••••" autocomplete="off">
+    <button class="btn primary" id="gate-btn" onclick="submitGate()">Entrer ✦</button>
+  </div>
+</div>
+
 <!-- ══════════════════ AUTH ══════════════════ -->
 <div id="auth-screen" class="full-center hidden">
   <h1>✦ Présages</h1>
   <p class="text-dim italic">Jeu de cartes en équipe · 4–6 joueurs</p>
   <div class="panel">
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('login')">Se connecter</button>
-      <button class="tab-btn"        onclick="switchTab('register')">Créer un compte</button>
-    </div>
     <label class="text-dim">Nom d'utilisateur</label>
     <input type="text"     id="auth-user" autocomplete="username"         placeholder="Pseudonyme">
     <label class="text-dim">Mot de passe</label>
@@ -665,6 +678,7 @@ input:focus { border-color:var(--gold); }
       <button class="btn btn-sm" onclick="showLeaderboard()">🏆 Classement</button>
       <button class="btn btn-sm" onclick="showHistory()">Historique</button>
       <button class="btn btn-sm admin-btn hidden" id="admin-btn-home" onclick="showAdmin()">⚙ Admin</button>
+      <button class="btn btn-sm" onclick="openChangePw()">Changer mdp</button>
       <button class="btn btn-sm danger" onclick="logout()">Déconnexion</button>
     </div>
   </div>
@@ -748,9 +762,19 @@ input:focus { border-color:var(--gold); }
       <div id="roundend-scores" class="text-dim"></div>
       <button class="btn primary" id="next-round-btn" onclick="nextRound()">Manche suivante</button>
     </div>
+    <div id="gameover-panel" class="hidden">
+      <div id="gameover-verdict"></div>
+      <div id="gameover-detail" class="text-dim" style="font-size:.85rem;"></div>
+      <div id="gameover-scores" class="text-dim" style="font-size:.82rem;"></div>
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.4rem;">
+        <button id="gameover-restart-btn" class="btn primary hidden" onclick="wsSend({action:'restart'})">↺ Nouvelle partie</button>
+        <button class="btn" onclick="showHome()">Quitter la partie</button>
+      </div>
+    </div>
   </div>
   <div id="chat-panel">
     <div class="chat-tabs">
+      <button id="chat-theme-btn" class="chat-tab-btn" onclick="toggleTheme()" title="Changer le thème" style="flex:0;padding:.28rem .5rem;">☀</button>
       <button class="chat-tab-btn active" onclick="switchChatTab('chat')">Messages</button>
       <button class="chat-tab-btn"        onclick="switchChatTab('lasttrick')">Pli précédent</button>
     </div>
@@ -796,6 +820,7 @@ input:focus { border-color:var(--gold); }
     <button class="admin-nav-btn active" onclick="adminTab('dashboard')">📊 Tableau de bord</button>
     <button class="admin-nav-btn"        onclick="adminTab('users')">👥 Utilisateurs</button>
     <button class="admin-nav-btn"        onclick="adminTab('rooms')">🎮 Parties en cours</button>
+    <button class="admin-nav-btn"        onclick="adminTab('accounts')">🔑 Comptes</button>
   </nav>
   <div id="admin-content">
 
@@ -838,6 +863,39 @@ input:focus { border-color:var(--gold); }
         <button class="btn btn-sm danger" style="margin-left:auto" onclick="adminCloseAllRooms()">✕ Supprimer toutes les parties</button>
       </div>
       <div class="room-cards" id="admin-rooms-grid"></div>
+    </div>
+
+    <!-- Accounts -->
+    <div id="admin-accounts" class="admin-section">
+      <h2 style="color:#c070c0;">Comptes</h2>
+
+      <div class="panel" style="max-width:420px;display:flex;flex-direction:column;gap:.8rem;">
+        <h3>Créer un compte</h3>
+        <label class="text-dim">Nom d'utilisateur</label>
+        <input type="text" id="new-user-name" placeholder="Pseudonyme" oninput="generateNewUserPw()">
+        <label class="text-dim">Mot de passe généré</label>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <input type="text" id="new-user-pass" readonly style="flex:1;font-family:monospace;letter-spacing:.05em;font-size:.88rem;" placeholder="Tapez un pseudonyme pour générer…">
+          <button class="btn btn-xs" onclick="copyGeneratedPw()" title="Copier" id="copy-pw-btn" style="flex-shrink:0;">⎘ Copier</button>
+          <button class="btn btn-xs" onclick="generateNewUserPw()" title="Régénérer" style="flex-shrink:0;">↻</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;cursor:pointer;">
+          <input type="checkbox" id="new-user-admin"> Administrateur
+        </label>
+        <button class="btn btn-sm primary" onclick="adminCreateUser()">Créer le compte</button>
+      </div>
+
+      <hr class="divider">
+      <h3>Données — Sauvegarde &amp; restauration</h3>
+      <p class="text-dim" style="font-size:.82rem;">Exportez les comptes et statistiques dans un fichier JSON. Importez-le après un <code>git pull</code> pour restaurer tout.</p>
+      <div class="flex gap2" style="flex-wrap:wrap;">
+        <button class="btn btn-sm primary" onclick="adminExport()">⬇ Exporter (JSON)</button>
+        <label class="btn btn-sm" style="cursor:pointer;">
+          ⬆ Importer (JSON)
+          <input type="file" accept=".json" style="display:none" onchange="adminImport(this)">
+        </label>
+        <button class="btn btn-sm danger" onclick="adminResetStats()">🗑 Réinitialiser les stats</button>
+      </div>
     </div>
 
   </div>
@@ -907,8 +965,11 @@ function _startTimerDisplay(pid, seconds) {
 // Thème
 function _applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
+  const icon = theme === 'light' ? '🌙' : '☀';
   const btn = document.getElementById('theme-toggle');
-  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀';
+  if (btn) btn.textContent = icon;
+  const cbtn = document.getElementById('chat-theme-btn');
+  if (cbtn) cbtn.textContent = icon;
 }
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -947,27 +1008,21 @@ async function api(method, path, body) {
 }
 
 function showScreen(id) {
-  ['auth-screen','home-screen','lobby-screen','game-screen',
+  ['gate-screen','auth-screen','home-screen','lobby-screen','game-screen',
    'history-screen','leaderboard-screen','admin-screen']
     .forEach(s => document.getElementById(s).classList.toggle('hidden', s!==id));
+  document.getElementById('theme-toggle').style.display = id === 'game-screen' ? 'none' : '';
 }
 
 // ─────────────────────────────────────────────────────────────────
 // AUTH
 // ─────────────────────────────────────────────────────────────────
-let curTab = 'login';
-function switchTab(t) {
-  curTab = t;
-  document.querySelectorAll('.tab-btn').forEach((b,i) =>
-    b.classList.toggle('active', (i===0&&t==='login')||(i===1&&t==='register')));
-  document.getElementById('auth-btn').textContent = t==='login' ? 'Se connecter' : "S'inscrire";
-}
 async function submitAuth() {
   const u = document.getElementById('auth-user').value.trim();
   const p = document.getElementById('auth-pass').value;
   if (!u||!p) { showErr('Remplissez tous les champs.'); return; }
   try {
-    const d = await api('POST', curTab==='login'?'/api/login':'/api/register', {username:u,password:p});
+    const d = await api('POST', '/api/login', {username:u, password:p});
     S.me = {id:d.id, username:d.username, is_admin:d.is_admin}; showHome();
   } catch(e) { showErr(e.message); }
 }
@@ -1071,11 +1126,11 @@ function handleMsg(msg) {
 // ─────────────────────────────────────────────────────────────────
 function render(gs) {
   if      (gs.state==='lobby')        { renderLobby(gs); }
-  else if (gs.state==='playing')      { _intState={}; document.getElementById('action-bar')?.classList.add('hidden'); renderGame(gs); closeRoundEnd(); closeTrickReview(); }
+  else if (gs.state==='playing')      { _intState={}; document.getElementById('action-bar')?.classList.add('hidden'); renderGame(gs); closeRoundEnd(); closeGameover(); closeTrickReview(); }
   else if (gs.state==='trick_review') { renderGame(gs); }
   else if (gs.state==='interactive')  { renderGame(gs); }
-  else if (gs.state==='roundend')     { renderGame(gs); renderRoundEnd(gs); }
-  else if (gs.state==='gameover')     { renderGame(gs); closeRoundEnd(); }
+  else if (gs.state==='roundend')     { renderGame(gs); renderRoundEnd(gs); closeGameover(); }
+  else if (gs.state==='gameover')     { renderGame(gs); closeRoundEnd(); renderGameover(gs); }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1137,13 +1192,16 @@ function playerShadowHTML(p, gs) {
   const cls = ['player-shadow', isNext ? 'my-turn-soon' : '', sameTeam ? 'same-team' : ''].filter(Boolean).join(' ');
   const miniCards = Array.from({length: count}, (_,i) =>
     `<div class="shadow-card-mini" style="opacity:${0.5 + i*0.1}"></div>`).join('');
-  const playedHTML = playedCard
-    ? `<div class="shadow-played">${cardHTML(playedCard, false, false, true)}</div>`
-    : `<div class="shadow-played empty"></div>`;
+  const playedHTML = `<div class="shadow-played empty"></div>`;
+  const playedIndicator = playedCard
+    ? `<div style="font-size:calc(.6rem * var(--cs));color:var(--gold);letter-spacing:.04em;font-family:'Cinzel',serif;">✓ joué</div>`
+    : '';
+  const cardsRow = `<div class="shadow-cards">${miniCards}<span class="shadow-count">${p.hand_count}</span></div>`;
   const arrow = isNext ? `<span class="turn-arrow">▶</span>` : '';
   return `<div class="${cls}" data-pid="${esc(p.id)}">
     <div class="shadow-name">${esc(p.username)}${p.is_bot?' 🤖':''}${arrow}</div>
-    <div class="shadow-cards">${miniCards}<span class="shadow-count">${p.hand_count}</span></div>
+    ${cardsRow}
+    ${playedIndicator}
     ${playedHTML}
   </div>`;
 }
@@ -1169,7 +1227,8 @@ function renderDiscardPile(gs) {
 
 function renderGame(gs) {
   showScreen('game-screen');
-  if (gs.state !== 'roundend') document.getElementById('roundend-panel').classList.add('hidden');
+  if (gs.state !== 'roundend')  document.getElementById('roundend-panel').classList.add('hidden');
+  if (gs.state !== 'gameover') document.getElementById('gameover-panel').classList.add('hidden');
 
   // Teams
   const tp = document.getElementById('teams-panel');
@@ -1227,7 +1286,7 @@ function renderGame(gs) {
   const ti  = document.getElementById('turn-indicator');
   ti.classList.remove('pulse');
   if (gs.state==='gameover') {
-    ti.textContent = '🎉 Partie terminée';
+    ti.textContent = '';
   } else if (gs.state==='interactive') {
     const pi = gs.pending_interaction;
     const actor = gs.players.find(p=>p.id===pi?.actor_pid);
@@ -1250,8 +1309,7 @@ function renderGame(gs) {
   document.getElementById('player-left').innerHTML  = pos.left  ? playerShadowHTML(pos.left,  gs) : '';
   document.getElementById('player-right').innerHTML = pos.right ? playerShadowHTML(pos.right, gs) : '';
 
-  // Trick : cartes au centre pour les joueurs sans ombre ; carte locale au-dessus de la main
-  const playersWithShadow = new Set([pos.left?.id, pos.right?.id, ...(pos.top||[]).map(p=>p.id)].filter(Boolean));
+  // Trick : toutes les cartes des autres joueurs au centre ; carte locale au-dessus de la main
   const tc = document.getElementById('trick-cards');
   tc.innerHTML='';
   const trickEntries = Object.entries(gs.current_trick||{});
@@ -1270,15 +1328,38 @@ function renderGame(gs) {
     myPlayedArea.innerHTML = ''; myPlayedArea.classList.add('hidden');
   }
 
-  // Autres joueurs sans ombre (cas rare) → centre
-  const centerEntries = trickEntries.filter(([ppid]) => ppid !== S.me?.id && !playersWithShadow.has(ppid));
-  centerEntries.forEach(([ppid,card])=>{
-    const pl = gs.players.find(p=>p.id===ppid);
-    const wrap = document.createElement('div');
-    wrap.className='played-wrapper'; wrap.dataset.pid=ppid;
-    wrap.innerHTML = cardHTML(card,false,false,true) + `<span class="played-by">${esc(pl?.username||ppid)}</span>`;
-    tc.appendChild(wrap);
-  });
+  // Cartes des autres joueurs → organisées spatialement dans #trick-cards
+  // Rangée du haut : joueurs de #players-top
+  const topPlayed = (pos.top||[]).filter(p => gs.current_trick?.[p.id]);
+  if (topPlayed.length) {
+    const topRow = document.createElement('div');
+    topRow.style.cssText = `display:flex;gap:calc(.9rem * var(--cs));justify-content:center;flex-wrap:wrap;`;
+    topPlayed.forEach(p => {
+      const wrap = document.createElement('div');
+      wrap.className = 'played-wrapper'; wrap.dataset.pid = p.id;
+      wrap.innerHTML = cardHTML(gs.current_trick[p.id], false, false, true) + `<span class="played-by">${esc(p.username)}</span>`;
+      topRow.appendChild(wrap);
+    });
+    tc.appendChild(topRow);
+  }
+  // Rangée du milieu : joueur gauche à gauche, joueur droit à droite
+  if (pos.left || pos.right) {
+    const midRow = document.createElement('div');
+    midRow.style.cssText = `display:flex;gap:calc(2.5rem * var(--cs));justify-content:center;align-items:flex-end;`;
+    [pos.left, pos.right].filter(Boolean).forEach(p => {
+      const card = gs.current_trick?.[p.id];
+      const wrap = document.createElement('div');
+      if (card) {
+        wrap.className = 'played-wrapper'; wrap.dataset.pid = p.id;
+        wrap.innerHTML = cardHTML(card, false, false, true) + `<span class="played-by">${esc(p.username)}</span>`;
+      } else {
+        // Espace réservé invisible pour maintenir la symétrie
+        wrap.style.cssText = `width:var(--cw);`;
+      }
+      midRow.appendChild(wrap);
+    });
+    tc.appendChild(midRow);
+  }
 
   // Pile de défausse
   renderDiscardPile(gs);
@@ -1318,14 +1399,6 @@ function renderGame(gs) {
   // Cibles interactives (si état interactif en cours)
   applyInteractionTargets();
 
-  // Gameover CTA
-  document.getElementById('gameover-btn')?.remove();
-  if (gs.state==='gameover' && gs.host_id===S.me?.id) {
-    const btn = document.createElement('button');
-    btn.id='gameover-btn'; btn.className='btn primary'; btn.style='margin-top:.5rem;';
-    btn.textContent='Nouvelle partie'; btn.onclick=()=>wsSend({action:'restart'});
-    document.getElementById('hand-area').appendChild(btn);
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1408,7 +1481,7 @@ function showTrickReview(msg) {
       badge.className = 'trick-status ' + (isWinner ? 'winner' : isDiscard ? 'discard' : 'ret');
       badge.textContent = isWinner ? `★ ${player?.username||ppid}` :
                           isDiscard ? '✕ Défaussée' : '↩ Reprise';
-      cardEl.parentElement.appendChild(badge);
+      (cardEl.closest('.player-shadow') ?? cardEl.parentElement).appendChild(badge);
     }
   });
 
@@ -1536,6 +1609,24 @@ function renderRoundEnd(gs) {
 function closeRoundEnd() { document.getElementById('roundend-panel').classList.add('hidden'); }
 function nextRound()     { wsSend({action:'new_round'}); }
 
+function renderGameover(gs) {
+  const panel = document.getElementById('gameover-panel');
+  panel.classList.remove('hidden');
+  const winningTeamIdx = gs.teams.findIndex(t => t.wins >= 2);
+  const myTeamIdx = gs.teams.findIndex(t => t.members.some(m => m.id === S.me?.id));
+  const iWon = winningTeamIdx !== -1 && winningTeamIdx === myTeamIdx;
+  const verdict = document.getElementById('gameover-verdict');
+  verdict.textContent = iWon ? '✦ Victoire !' : '✕ Défaite';
+  verdict.className = iWon ? 'win' : 'loss';
+  const winners = winningTeamIdx !== -1 ? gs.teams[winningTeamIdx].members.map(m=>esc(m.username)).join(', ') : '?';
+  document.getElementById('gameover-detail').innerHTML =
+    `Équipe victorieuse : <strong>${winners}</strong>`;
+  document.getElementById('gameover-scores').textContent =
+    gs.teams.map((t,i) => `Éq.${i+1} : ${t.wins}/2`).join('  ·  ');
+  document.getElementById('gameover-restart-btn').classList.toggle('hidden', gs.host_id !== S.me?.id);
+}
+function closeGameover() { document.getElementById('gameover-panel').classList.add('hidden'); }
+
 // ─────────────────────────────────────────────────────────────────
 // INTERACTION — plateau intégré
 // ─────────────────────────────────────────────────────────────────
@@ -1586,7 +1677,7 @@ function openInteraction(msg) {
     btn.onclick = () => sendInteraction();
     document.getElementById('ab-choices').appendChild(btn);
   } else if (itype === 'absolu') {
-    abMsg.textContent = 'Cliquez sur un joueur pour échanger une carte.';
+    abMsg.textContent = '① Cliquez sur un joueur avec qui échanger.';
   } else if (itype === 'jalousie') {
     abMsg.textContent = 'Cliquez sur une carte adverse pour l\'échanger avec la vôtre.';
   } else if (itype === 'colere') {
@@ -1659,12 +1750,12 @@ function applyInteractionTargets() {
         });
       });
     } else {
-      // Étape 2 : cartes adverses
-      document.querySelectorAll('.player-shadow').forEach(shadow => {
-        const pid = shadow.dataset.pid;
+      // Étape 2 : cartes adverses (toutes dans #trick-cards via .played-wrapper)
+      document.querySelectorAll('.played-wrapper').forEach(wrap => {
+        const pid = wrap.dataset.pid;
         if (!pid || pid === S.me?.id) return;
         const card = gs.current_trick?.[pid];
-        const cardEl = shadow.querySelector('.shadow-played .card');
+        const cardEl = wrap.querySelector('.card');
         if (!card || !cardEl) return;
         target(cardEl, () => {
           _intState.selected.target_card_id = card.id;
@@ -1679,13 +1770,47 @@ function applyInteractionTargets() {
       });
     }
 
-  } else if (['reve','absolu'].includes(itype)) {
+  } else if (itype === 'reve') {
     const allowed = new Set(_intState.players.map(p=>p.id));
     document.querySelectorAll('.player-shadow').forEach(shadow => {
       const pid = shadow.dataset.pid;
       if (!pid || !allowed.has(pid)) return;
       target(shadow, () => { _intState.selected.target_pid=pid; sendInteraction(); });
     });
+
+  } else if (itype === 'absolu') {
+    const allowed = new Set(_intState.players.map(p=>p.id));
+    if (!_intState.selected.target_pid) {
+      // Étape 1 : choisir le joueur cible
+      document.querySelectorAll('.player-shadow').forEach(shadow => {
+        const pid = shadow.dataset.pid;
+        if (!pid || !allowed.has(pid)) return;
+        target(shadow, () => {
+          shadow.classList.remove('int-target');
+          shadow.classList.add('int-selected');
+          shadow.onclick = null;
+          _intState.selected.target_pid = pid;
+          const tname = _intState.players.find(p=>p.id===pid)?.username || '?';
+          document.getElementById('ab-msg').textContent = `② Cliquez sur la carte de votre main à donner à ${tname}.`;
+          applyInteractionTargets();
+        });
+      });
+    } else {
+      // Étape 2 : choisir la carte à donner depuis sa propre main
+      document.querySelectorAll('#my-hand .card').forEach(cardEl => {
+        const cid = cardEl.dataset.cardId;
+        if (!cid || cardEl.classList.contains('card-back')) return;
+        target(cardEl, () => {
+          _intState.selected.my_card_id = cid;
+          sendInteraction();
+        });
+      });
+      // Garder le joueur cible surligné
+      document.querySelectorAll('.player-shadow').forEach(shadow => {
+        if (shadow.dataset.pid === _intState.selected.target_pid)
+          shadow.classList.add('int-selected');
+      });
+    }
 
   } else if (itype === 'secret' && _intState.selected.choice) {
     const allowed = new Set(_intState.players.map(p=>p.id));
@@ -1705,13 +1830,7 @@ function applyInteractionTargets() {
 }
 
 function sendInteraction() {
-  const t = _intState.type, sel = _intState.selected, gs = S.gs;
-  if (t === 'absolu') {
-    const me     = gs?.players?.find(p=>p.id===S.me?.id);
-    const them   = gs?.players?.find(p=>p.id===sel.target_pid);
-    sel.my_card_id    = me?.hand?.find(c=>!c.back)?.id;
-    sel.their_card_id = them?.hand?.[0]?.id;
-  }
+  const t = _intState.type, sel = _intState.selected;
   wsSend({action:'interaction_response', type:t, ...sel});
   _intState = {};
   document.getElementById('action-bar').classList.add('hidden');
@@ -1837,7 +1956,7 @@ function showAdmin() {
 
 function adminTab(name) {
   document.querySelectorAll('.admin-nav-btn').forEach((b,i)=>{
-    const tabs=['dashboard','users','rooms'];
+    const tabs=['dashboard','users','rooms','accounts'];
     b.classList.toggle('active', tabs[i]===name);
   });
   document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
@@ -1910,6 +2029,7 @@ function renderAdminUsersTable(users) {
               ? `<button class="btn btn-xs success" onclick="adminUnban('${u.id}','${esc(u.username)}')">Débannir</button>`
               : `<button class="btn btn-xs danger"  onclick="adminBan('${u.id}','${esc(u.username)}')">Bannir</button>`}
             <button class="btn btn-xs" onclick="adminResetPw('${u.id}','${esc(u.username)}')">Reset mdp</button>
+            <button class="btn btn-xs" onclick="adminResetUserStats('${u.id}','${esc(u.username)}')">🗑 Stats</button>
             <button class="btn btn-xs danger" onclick="adminDelete('${u.id}','${esc(u.username)}')">Supprimer</button>
           ` : '<span class="text-dim" style="font-size:.72rem;">–</span>'}
         </div>
@@ -2000,6 +2120,123 @@ function adminCloseAllRooms() {
   }, 'Supprimer tout', true);
 }
 
+function _randomPw() {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  return Array.from({length: 12}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function generateNewUserPw() {
+  const username = document.getElementById('new-user-name').value.trim();
+  const pwEl = document.getElementById('new-user-pass');
+  if (!username) { pwEl.value = ''; return; }
+  if (!pwEl.value) pwEl.value = _randomPw();
+}
+
+function copyGeneratedPw() {
+  const pw = document.getElementById('new-user-pass').value;
+  if (!pw) { showErr('Tapez d\'abord un pseudonyme.'); return; }
+  navigator.clipboard.writeText(pw).then(() => {
+    const btn = document.getElementById('copy-pw-btn');
+    btn.textContent = '✓ Copié';
+    setTimeout(() => btn.textContent = '⎘ Copier', 1800);
+  }).catch(() => showErr('Copie impossible.'));
+}
+
+async function adminCreateUser() {
+  const username = document.getElementById('new-user-name').value.trim();
+  const password = document.getElementById('new-user-pass').value;
+  const is_admin = document.getElementById('new-user-admin').checked;
+  if (!username) { showErr('Entrez un nom d\'utilisateur.'); return; }
+  if (!password) { showErr('Le mot de passe n\'a pas été généré.'); return; }
+  try {
+    await api('POST', '/api/admin/create-user', {username, password, is_admin});
+    showOk(`Compte "${username}" créé. Mot de passe : ${password}`);
+    document.getElementById('new-user-name').value = '';
+    document.getElementById('new-user-pass').value = '';
+    document.getElementById('new-user-admin').checked = false;
+  } catch(e) { showErr(e.message); }
+}
+
+async function adminExport() {
+  try {
+    const data = await api('GET', '/api/admin/export');
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `presages_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    showOk('Sauvegarde téléchargée.');
+  } catch(e) { showErr(e.message); }
+}
+
+async function adminImport(input) {
+  const file = input.files[0]; if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    await api('POST', '/api/admin/import', data);
+    showOk('Import réussi. Actualisez pour voir les changements.');
+  } catch(e) { showErr('Import échoué : ' + e.message); }
+  input.value = '';
+}
+
+function adminResetStats() {
+  openModal('⚠ Réinitialiser les statistiques',
+    'Supprimer l\'historique de toutes les parties de tous les joueurs ? Cette action est irréversible.',
+    '', async()=>{
+      try { await api('POST', '/api/admin/reset-stats'); showOk('Statistiques réinitialisées.'); loadAdminDashboard(); }
+      catch(e) { showErr(e.message); }
+    }, 'Réinitialiser', true);
+}
+
+function adminResetUserStats(uid, uname) {
+  openModal(`🗑 Reset stats — ${uname}`,
+    `Supprimer tout l'historique de parties de « ${uname} » ? L'historique sera effacé mais le compte reste.`,
+    '', async()=>{
+      try { await api('POST', `/api/admin/users/${uid}/reset-stats`); showOk(`Stats de ${uname} réinitialisées.`); loadAdminUsers(); }
+      catch(e) { showErr(e.message); }
+    }, 'Réinitialiser', true);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CHANGE PASSWORD
+// ─────────────────────────────────────────────────────────────────
+function openChangePw() {
+  openModal('Changer mon mot de passe', '', `
+    <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:.3rem">
+      <input type="password" id="cpw-old" placeholder="Mot de passe actuel" style="width:100%">
+      <input type="password" id="cpw-new" placeholder="Nouveau mot de passe (min 4 car.)" style="width:100%">
+    </div>
+  `, async () => {
+    const old_password = document.getElementById('cpw-old')?.value || '';
+    const new_password = document.getElementById('cpw-new')?.value || '';
+    if (!old_password || !new_password) { showErr('Remplissez les deux champs.'); return; }
+    try {
+      await api('POST', '/api/change-password', {old_password, new_password});
+      showOk('Mot de passe modifié.');
+    } catch(e) { showErr(e.message); }
+  }, 'Enregistrer', false);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GATE (accès privé)
+// ─────────────────────────────────────────────────────────────────
+const _GATE_KEY = 'presages_gate_v1';
+const _GATE_PW  = 'Interface-bleme&calamar';
+
+function submitGate() {
+  const val = document.getElementById('gate-pass').value;
+  if (val === _GATE_PW) {
+    localStorage.setItem(_GATE_KEY, '1');
+    init();
+  } else {
+    showErr('Mot de passe incorrect.');
+    document.getElementById('gate-pass').value = '';
+    document.getElementById('gate-pass').focus();
+  }
+}
+document.getElementById('gate-pass').addEventListener('keydown', e => { if (e.key === 'Enter') submitGate(); });
+
 // ─────────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────────
@@ -2009,7 +2246,11 @@ async function init() {
     S.me = {id:d.id, username:d.username, is_admin:d.is_admin}; showHome();
   } catch { showScreen('auth-screen'); }
 }
-init();
+
+if (localStorage.getItem(_GATE_KEY) === '1') {
+  init();
+}
+// sinon le gate-screen reste visible par défaut
 </script>
 </body>
 </html>
