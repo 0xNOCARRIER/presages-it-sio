@@ -311,9 +311,10 @@ input:focus { border-color:var(--gold); }
 }
 .tb-title  { font-family:'Cinzel',serif; color:var(--gold); font-size:.82rem; }
 .tb-effects { color:var(--text-dim); font-size:.75rem; line-height:1.5; }
+.played-wrapper { display:flex; flex-direction:column; align-items:center; }
 .trick-status {
-  font-size:.68rem; font-style:italic; text-align:center; margin-top:.2rem; pointer-events:none;
-  display:block;
+  font-size:.72rem; font-weight:600; font-style:italic; text-align:center; margin-bottom:.2rem;
+  pointer-events:none; display:block;
 }
 .trick-status.winner { color:var(--gold); }
 .trick-status.discard { color:#e05050; }
@@ -322,11 +323,11 @@ input:focus { border-color:var(--gold); }
 /* ── ACTION BAR (interactions, inline au-dessus de la main) ── */
 #action-bar {
   background:#11101c; border:1px solid var(--gold-dim); border-radius:var(--r);
-  padding:.5rem .9rem; display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
-  flex-shrink:0; animation:bannerIn .2s ease;
+  padding:.6rem 1.1rem; display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
+  flex-shrink:0; animation:bannerIn .2s ease; max-width:540px; align-self:center;
 }
 #ab-title { font-family:'Cinzel',serif; color:var(--gold); font-size:.82rem; flex-shrink:0; }
-#ab-msg   { color:var(--text-dim); font-size:.8rem; flex:1; min-width:90px; }
+#ab-msg   { color:var(--text-dim); font-size:.95rem; flex:1; min-width:90px; }
 #ab-choices { display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; }
 .ab-btn {
   background:var(--surface); border:1px solid var(--border); color:var(--text);
@@ -499,8 +500,11 @@ input:focus { border-color:var(--gold); }
 /* ── PLAYER SHADOWS (ombres joueurs autour de la table) ── */
 #players-top   { display:flex; gap:calc(.5rem * var(--cs)); justify-content:center; flex-shrink:0; flex-wrap:wrap; }
 #table-middle  { display:flex; gap:calc(.5rem * var(--cs)); align-items:center; flex:1; min-height:0; overflow:visible; }
-#player-left, #player-right {
-  width:calc(170px * var(--cs)); flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+#player-left {
+  flex-shrink:0; display:flex; flex-direction:row; align-items:center; justify-content:flex-end; gap:.35rem;
+}
+#player-right {
+  flex-shrink:0; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:.35rem;
 }
 #table-center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.6rem; }
 
@@ -541,6 +545,11 @@ input:focus { border-color:var(--gold); }
 .shadow-played { margin-top:.3rem; flex-shrink:0; }
 .shadow-played .card { pointer-events:none; }
 .shadow-played.empty { display:none; }
+
+/* ── CARTES JOUÉES POSITIONNELLES ── */
+.player-slot-top { display:flex; flex-direction:column; align-items:center; gap:.35rem; }
+.player-played-side .card, .player-played-below .card { pointer-events:none; }
+.card.played-card:hover { transform:none; box-shadow:none; }
 
 /* Carte jouée par le joueur local, au-dessus de sa main */
 #my-played-area {
@@ -1127,8 +1136,8 @@ function handleMsg(msg) {
 function render(gs) {
   if      (gs.state==='lobby')        { renderLobby(gs); }
   else if (gs.state==='playing')      { _intState={}; document.getElementById('action-bar')?.classList.add('hidden'); renderGame(gs); closeRoundEnd(); closeGameover(); closeTrickReview(); }
-  else if (gs.state==='trick_review') { renderGame(gs); }
-  else if (gs.state==='interactive')  { renderGame(gs); }
+  else if (gs.state==='trick_review') { renderGame(gs); if (_lastTrickMsg) showTrickReview(_lastTrickMsg); }
+  else if (gs.state==='interactive')  { renderGame(gs); if (_lastTrickMsg && _intState.type==='chain_discard') showTrickReview(_lastTrickMsg); }
   else if (gs.state==='roundend')     { renderGame(gs); renderRoundEnd(gs); closeGameover(); }
   else if (gs.state==='gameover')     { renderGame(gs); closeRoundEnd(); renderGameover(gs); }
 }
@@ -1303,19 +1312,45 @@ function renderGame(gs) {
     ti.textContent = `En attente de ${p?p.username:'…'}`;
   }
 
-  // Ombres des autres joueurs
+  // Joueurs et cartes jouées positionnées autour de la table
   const pos = getPlayerPositions(gs);
-  document.getElementById('players-top').innerHTML  = (pos.top||[]).map(p => playerShadowHTML(p, gs)).join('');
-  document.getElementById('player-left').innerHTML  = pos.left  ? playerShadowHTML(pos.left,  gs) : '';
-  document.getElementById('player-right').innerHTML = pos.right ? playerShadowHTML(pos.right, gs) : '';
 
-  // Trick : toutes les cartes des autres joueurs au centre ; carte locale au-dessus de la main
+  // Joueurs du haut : shadow en haut, carte jouée en dessous
+  document.getElementById('players-top').innerHTML = (pos.top||[]).map(p => {
+    const card = gs.current_trick?.[p.id];
+    const cardPart = card
+      ? `<div class="player-played-below played-wrapper" data-pid="${esc(p.id)}">${cardHTML(card, false, false, true)}</div>`
+      : '';
+    return `<div class="player-slot-top">${playerShadowHTML(p, gs)}${cardPart}</div>`;
+  }).join('');
+
+  // Joueur de gauche : shadow à gauche, carte jouée à droite (vers le centre)
+  const leftEl = document.getElementById('player-left');
+  if (pos.left) {
+    const card = gs.current_trick?.[pos.left.id];
+    const cardPart = card
+      ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.left.id)}">${cardHTML(card, false, false, true)}</div>`
+      : '';
+    leftEl.innerHTML = playerShadowHTML(pos.left, gs) + cardPart;
+  } else { leftEl.innerHTML = ''; }
+
+  // Joueur de droite : carte jouée à gauche (vers le centre), shadow à droite
+  const rightEl = document.getElementById('player-right');
+  if (pos.right) {
+    const card = gs.current_trick?.[pos.right.id];
+    const cardPart = card
+      ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.right.id)}">${cardHTML(card, false, false, true)}</div>`
+      : '';
+    rightEl.innerHTML = cardPart + playerShadowHTML(pos.right, gs);
+  } else { rightEl.innerHTML = ''; }
+
+  // Centre : label du pli (les cartes sont désormais au bord, pas au centre)
   const tc = document.getElementById('trick-cards');
-  tc.innerHTML='';
+  tc.innerHTML = '';
   const trickEntries = Object.entries(gs.current_trick||{});
   document.getElementById('trick-label').textContent = trickEntries.length ? 'Pli en cours' : 'Aucune carte en jeu';
 
-  // Carte jouée par le joueur local → #my-played-area
+  // Carte jouée par le joueur local → #my-played-area (au-dessus de la main)
   const myPlayedCard = gs.current_trick?.[S.me?.id];
   const myPlayedArea = document.getElementById('my-played-area');
   if (myPlayedCard) {
@@ -1326,39 +1361,6 @@ function renderGame(gs) {
     myPlayedArea.classList.remove('hidden');
   } else {
     myPlayedArea.innerHTML = ''; myPlayedArea.classList.add('hidden');
-  }
-
-  // Cartes des autres joueurs → organisées spatialement dans #trick-cards
-  // Rangée du haut : joueurs de #players-top
-  const topPlayed = (pos.top||[]).filter(p => gs.current_trick?.[p.id]);
-  if (topPlayed.length) {
-    const topRow = document.createElement('div');
-    topRow.style.cssText = `display:flex;gap:calc(.9rem * var(--cs));justify-content:center;flex-wrap:wrap;`;
-    topPlayed.forEach(p => {
-      const wrap = document.createElement('div');
-      wrap.className = 'played-wrapper'; wrap.dataset.pid = p.id;
-      wrap.innerHTML = cardHTML(gs.current_trick[p.id], false, false, true) + `<span class="played-by">${esc(p.username)}</span>`;
-      topRow.appendChild(wrap);
-    });
-    tc.appendChild(topRow);
-  }
-  // Rangée du milieu : joueur gauche à gauche, joueur droit à droite
-  if (pos.left || pos.right) {
-    const midRow = document.createElement('div');
-    midRow.style.cssText = `display:flex;gap:calc(2.5rem * var(--cs));justify-content:center;align-items:flex-end;`;
-    [pos.left, pos.right].filter(Boolean).forEach(p => {
-      const card = gs.current_trick?.[p.id];
-      const wrap = document.createElement('div');
-      if (card) {
-        wrap.className = 'played-wrapper'; wrap.dataset.pid = p.id;
-        wrap.innerHTML = cardHTML(card, false, false, true) + `<span class="played-by">${esc(p.username)}</span>`;
-      } else {
-        // Espace réservé invisible pour maintenir la symétrie
-        wrap.style.cssText = `width:var(--cw);`;
-      }
-      midRow.appendChild(wrap);
-    });
-    tc.appendChild(midRow);
   }
 
   // Pile de défausse
@@ -1471,9 +1473,7 @@ function showTrickReview(msg) {
     const player = gs.players.find(p=>p.id===ppid);
     const isDiscard = discardedIds.has(card.id) || chainIds.has(card.id);
     const isWinner  = ppid === msg.winner_pid;
-    const cardEl = document.querySelector(
-      `.player-shadow[data-pid="${ppid}"] .shadow-played .card, .played-wrapper[data-pid="${ppid}"] .card`
-    );
+    const cardEl = document.querySelector(`.played-wrapper[data-pid="${ppid}"] .card`);
     if (cardEl) {
       if (isWinner) cardEl.classList.add('winner-glow');
       else if (isDiscard) cardEl.classList.add('loser-fade');
@@ -1481,7 +1481,7 @@ function showTrickReview(msg) {
       badge.className = 'trick-status ' + (isWinner ? 'winner' : isDiscard ? 'discard' : 'ret');
       badge.textContent = isWinner ? `★ ${player?.username||ppid}` :
                           isDiscard ? '✕ Défaussée' : '↩ Reprise';
-      (cardEl.closest('.player-shadow') ?? cardEl.parentElement).appendChild(badge);
+      cardEl.parentElement.insertBefore(badge, cardEl);
     }
   });
 
@@ -1528,9 +1528,7 @@ function animateTrickEnd(gs, msg) {
 
   Object.entries(gs.current_trick||{}).forEach(([pid, card]) => {
     const isDiscard = discardedIds.has(card.id) || chainIds.has(card.id);
-    const cardEl = document.querySelector(
-      `.player-shadow[data-pid="${pid}"] .shadow-played .card, .played-wrapper[data-pid="${pid}"] .card`
-    );
+    const cardEl = document.querySelector(`.played-wrapper[data-pid="${pid}"] .card`);
     if (!cardEl) return;
     if (isDiscard && discardEl) {
       flyCard(cardEl, discardEl);
@@ -1686,6 +1684,8 @@ function openInteraction(msg) {
     abMsg.textContent = '① Cliquez sur une carte de votre main à donner.';
   } else if (itype === 'reve_response') {
     abMsg.textContent = 'Cliquez sur une carte de votre main à jouer devant l\'auteur du Rêve.';
+  } else if (itype === 'chain_discard') {
+    abMsg.textContent = 'La Chance : cliquez sur une carte de votre main à défausser.';
   }
 
   bar.classList.remove('hidden');
@@ -1826,6 +1826,14 @@ function applyInteractionTargets() {
       if (!cid || cardEl.classList.contains('card-back')) return;
       target(cardEl, () => { _intState.selected.card_id=cid; sendInteraction(); });
     });
+
+  } else if (itype === 'chain_discard') {
+    const allowed = new Set((_intState.hand||[]).map(c=>c.id));
+    document.querySelectorAll('#my-hand .card').forEach(cardEl => {
+      const cid = cardEl.dataset.cardId;
+      if (!cid || cardEl.classList.contains('card-back') || !allowed.has(cid)) return;
+      target(cardEl, () => { _intState.selected.card_id=cid; sendInteraction(); });
+    });
   }
 }
 
@@ -1843,7 +1851,8 @@ function sendInteraction() {
 function interactionTitle(t) {
   return {loi:'⚖️ La Loi',reve:'💭 Le Rêve',jalousie:'🔀 La Jalousie',
           secret:'🤫 Le Secret',colere:'😡 La Colère',trahison:'🗡️ La Trahison',
-          absolu:'✨ L\'Absolu', reve_response:'💭 Le Rêve — à vous de jouer'}[t]||'Action';
+          absolu:'✨ L\'Absolu', reve_response:'💭 Le Rêve — à vous de jouer',
+          chain_discard:'⛓️ La Chance'}[t]||'Action';
 }
 
 // ─────────────────────────────────────────────────────────────────

@@ -142,7 +142,7 @@ Toutes les actions se déroulent directement sur le plateau de jeu, sans popup n
 - **Effets interactifs** (La Jalousie, La Colère, La Trahison, Le Rêve, L'Absolu, La Loi, Le Secret) : une barre contextuelle apparaît au-dessus de la main ; les éléments du plateau (cartes adverses, ombres de joueurs, cartes en main) s'illuminent et deviennent cliquables directement
 - **Main révélée** (Le Secret) : affichée dans le chat
 - **Fin de manche** : panneau centré sur le plateau, non plein-écran
-- **Carte jouée** par le joueur local affichée juste au-dessus de sa main
+- **Cartes jouées positionnées** autour du plateau : joueur gauche → carte à sa droite ; joueur droit → carte à sa gauche ; joueurs du haut → carte en dessous de leur ombre ; joueur local → carte au-dessus de sa main
 - **Joueur dont c'est le tour** : ombre entourée d'or avec indicateur ▶ clignotant
 - **Nombre de cartes** affiché en badge doré à côté des mini-cartes de chaque ombre
 - **Panel équipes** (colonne gauche) agrandi et plus lisible ; bouton **Quitter la partie** en bas

@@ -292,7 +292,7 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
             if spare:
                 extra = min(spare, key=lambda c: c["value"])
                 chain_discards[owner] = extra
-                msgs.append(f"⛓️ La Chance : défausse aussi {extra['name']}.")
+                msgs.append("⛓️ La Chance : le joueur doit défausser une carte supplémentaire.")
 
     next_leader = winner_pid
     for pid, card in played.items():
@@ -365,6 +365,7 @@ class GameRoom:
         self.turn_timer_seconds  = 10   # secondes par tour joueur humain
         self._turn_timer_task    = None  # asyncio Task de minuterie
         self.last_activity_at    = time.time()  # pour le monitor d'inactivité
+        self.pending_chain_discards = {}  # {pid: [eligible_cards]} pour La Chance interactive
 
     def add_player(self, pid, username):
         self.players[pid] = {"username": username, "ws": None}
@@ -554,21 +555,29 @@ async def _resolve_and_advance(room: GameRoom):
             # _owner ≠ slot pour Le Rêve : la carte retourne à la main de celui qui l'a jouée
             owner = played_c.get("_owner", p)
             room.hands[owner] = [c for c in room.hands[owner] if c["id"] != played_c["id"]]
+    # Chain discards : bots → auto-appliqué ; humains → interaction différée
+    bot_chain_discards = {}
     for p, extra in result["chain_discards"].items():
-        room.hands[p] = [c for c in room.hands[p] if c["id"] != extra["id"]]
+        if p.startswith("bot_"):
+            room.hands[p] = [c for c in room.hands[p] if c["id"] != extra["id"]]
+            bot_chain_discards[p] = extra
+        else:
+            eligible = [c for c in room.hands[p] if c["effect_type"] != "unbreakable"]
+            if eligible:
+                room.pending_chain_discards[p] = eligible
 
-    # Accumuler la pile de défausse
+    # Accumuler la pile de défausse (bots seulement ; humains s'appliquent lors de leur réponse)
     room.discard_pile.extend(result["discarded"])
-    for extra in result["chain_discards"].values():
+    for extra in bot_chain_discards.values():
         if not any(c["id"] == extra["id"] for c in room.discard_pile):
             room.discard_pile.append(extra)
 
-    # Sauvegarder le pli pour affichage ultérieur
+    # Sauvegarder le pli pour affichage ultérieur (sans les IDs des chain_discards humains)
     room.last_trick = {
         "winner_pid": winner_pid, "winner_name": winner_name,
         "played": {p: c for p, c in room.current_trick.items()},
         "discarded_ids": list(discarded_ids),
-        "chain_discard_ids": [c["id"] for c in result["chain_discards"].values()],
+        "chain_discard_ids": [c["id"] for c in bot_chain_discards.values()],
         "messages": result["messages"],
     }
 
@@ -576,14 +585,14 @@ async def _resolve_and_advance(room: GameRoom):
     room.state = "trick_review"
     room.trick_review_result = {
         "winner_pid": winner_pid, "winner_name": winner_name,
-        "discarded": result["discarded"], "chain_discards": result["chain_discards"],
+        "discarded": result["discarded"], "chain_discards": bot_chain_discards,
         "messages": result["messages"], "next_leader": result["next_leader"], "msg": full_msg,
     }
     auto_ms = 0  # L'hôte clique toujours sur Continuer (même en mode dev)
     await broadcast(room, {
         "type": "trick_review", "winner_pid": winner_pid, "winner_name": winner_name,
         "discarded": result["discarded"],
-        "chain_discards": {p: c for p, c in result["chain_discards"].items()},
+        "chain_discards": bot_chain_discards,
         "messages": result["messages"], "msg": full_msg, "auto_continue_ms": auto_ms,
     })
     await send_state(room)
@@ -600,6 +609,25 @@ async def _finalize_trick(room: GameRoom):
     if room.state != "trick_review": return
     t = getattr(room, "_review_task", None)
     if t and not t.done(): t.cancel()
+
+    # Si un joueur humain doit défausser via La Chance, gérer l'interaction avant de finaliser
+    if room.pending_chain_discards:
+        pid = next(iter(room.pending_chain_discards))
+        eligible = room.pending_chain_discards[pid]
+        if not eligible:
+            del room.pending_chain_discards[pid]
+            await _finalize_trick(room)
+            return
+        room.state = "interactive"
+        room.pending_interaction = {"type": "chain_discard", "actor_pid": pid}
+        await send_state(room)
+        await send_to(room, pid, {
+            "type": "interaction_required", "interaction": "chain_discard",
+            "message": "La Chance : défaussez une carte de votre main.",
+            "hand": eligible,
+        })
+        return
+
     result = room.trick_review_result
     win = check_win_condition(room.hands, room.teams)
     if win is not None:
@@ -625,6 +653,7 @@ async def _finalize_trick(room: GameRoom):
     room.current_trick = {}
     room.loi_constraint = None
     room.trick_review_result = None
+    room.pending_chain_discards = {}
     room.state = "playing"
     await send_state(room)
     await _start_turn_timer(room)
@@ -720,6 +749,7 @@ async def _play_card_logic(room: GameRoom, pid: str, card: dict):
         await send_state(room)
         if room.dev_mode:
             asyncio.create_task(run_bots(room))
+        await _start_turn_timer(room)
 
 # ─────────────────────────────────────────────────────────────────
 # FASTAPI
@@ -1341,6 +1371,23 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                     if room.dev_mode: asyncio.create_task(run_bots(room))
                     await _start_turn_timer(room)
 
+                elif itype == "chain_discard":
+                    cid = raw.get("card_id")
+                    eligible = room.pending_chain_discards.get(pid, [])
+                    card = next((c for c in eligible if c["id"] == cid), None)
+                    if not card:
+                        await websocket.send_json({"type":"error","msg":"Carte invalide ou non défaussable."}); continue
+                    room.hands[pid] = [c for c in room.hands[pid] if c["id"] != cid]
+                    room.discard_pile.append(card)
+                    if room.last_trick and "chain_discard_ids" in room.last_trick:
+                        room.last_trick["chain_discard_ids"].append(cid)
+                    del room.pending_chain_discards[pid]
+                    await broadcast(room, {"type":"chat",
+                        "msg":f"⛓️ La Chance : {username} défausse {card['name']}."})
+                    room.pending_interaction = None
+                    room.state = "trick_review"
+                    await _finalize_trick(room)
+
             elif act == "continue_trick" and pid == room.host_id:
                 if room.state == "trick_review":
                     await _finalize_trick(room)
@@ -1359,7 +1406,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 leader = room.manche_winner_pid or room.player_order[0]
                 room.trick_leader = leader; room.trick_order = _rotate(room.player_order, leader)
                 room.current_trick = {}; room.loi_constraint = None; room.state = "playing"
-                room.discard_pile = []; room.last_trick = None
+                room.discard_pile = []; room.last_trick = None; room.pending_chain_discards = {}
                 await send_state(room)
                 await broadcast(room,{"type":"chat","msg":f"🔮 Manche {room.round_num} ! {room.players[leader]['username']} ouvre."})
                 if room.dev_mode: asyncio.create_task(run_bots(room))
@@ -1382,6 +1429,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 room.game_id=str(uuid.uuid4()); room.started_at=int(time.time())
                 room.active_absolu_ids=[]; room.manche_winner_pid=None
                 room.absolu_dealt={}; room.discard_pile=[]; room.last_trick=None
+                room.pending_chain_discards={}
                 await send_state(room)
                 await broadcast(room,{"type":"chat","msg":"🔄 Nouvelle partie !"})
 

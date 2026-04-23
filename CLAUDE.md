@@ -146,6 +146,7 @@ Implémentation web du jeu de société **Présages** (jeu de cartes français) 
 - **La Loi** : deux gros boutons flèches ▼ (<15) et ▲ (>15), avec description visuelle de la contrainte
 - **Statistiques joueur** affichées sur l'écran d'accueil (victoires / parties)
 - **Fin de manche** : `#roundend-panel` centré, non plein-écran
+- **Cartes jouées positionnées autour du plateau** : joueur gauche → carte à sa droite (#player-left : flex-row [shadow][card]) ; joueur droit → carte à sa gauche (#player-right : flex-row [card][shadow]) ; joueurs du haut → carte en dessous de leur shadow (.player-slot-top : flex-col) ; joueur local → #my-played-area au-dessus de la main. Les cartes jouées utilisent toutes la classe `played-wrapper` + `data-pid` pour les sélecteurs de trick_review/animateTrickEnd/interactions.
 
 ### Code admin (dev)
 - Un **code admin unique** généré au premier démarrage, stocké dans `app_config` (clé `admin_join_code`)
