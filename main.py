@@ -129,13 +129,24 @@ def effective_colors(card):
         return {"vert", "jaune", "rouge", "bleu"}
     return {card["color"]}
 
+def _quincunx_order(teams):
+    """Interleave team members so no two adjacent players are teammates.
+    4p 2v2 → T1,T2,T1,T2 ; 6p 2v2v2 → T1,T2,T3,T1,T2,T3."""
+    max_size = max(len(t) for t in teams)
+    order = []
+    for i in range(max_size):
+        for t in teams:
+            if i < len(t):
+                order.append(t[i])
+    return order
+
 def _hand_sizes(players, teams, n):
     """Taille de main cible par joueur selon regles.md §MISE EN PLACE :
-       4 j. → 5 / 5 j. → 5 pour l'équipe de 3, 4 pour l'équipe de 2 / 6 j. → 4."""
+       4 j. → 5 / 5 j. → 5 pour l'équipe de 3, 4 pour l'équipe de 2 / 6 j. → 5."""
     if n == 4:
         return {p: 5 for p in players}
     if n == 6:
-        return {p: 4 for p in players}
+        return {p: 5 for p in players}
     # 5 joueurs : la règle dépend de la taille de l'équipe
     sizes = {}
     for t in teams:
@@ -1114,6 +1125,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 room.team_wins = [0] * len(room.teams)
                 room.active_absolu_ids = active_ids
                 room.manche_winner_pid = None
+                room.player_order = _quincunx_order(teams)
                 # Manche 1 : plus fort Absolu ouvre (regles.md §DÉROULEMENT)
                 leader = max(absolu_dealt.items(), key=lambda x: x[1]["value"])[0]
                 room.trick_leader = leader
@@ -1379,9 +1391,13 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                             await broadcast(room, {"type": "chat",
                                 "msg": f"✨ L'Absolu : {username} échange {mc['name']} avec une carte de {room.players[tpid]['username']}."})
                     room.pending_interaction = None; room.state = "playing"
-                    await send_state(room)
-                    if room.dev_mode: asyncio.create_task(run_bots(room))
-                    await _start_turn_timer(room)
+                    if len(room.current_trick) == len(room.players):
+                        await _resolve_and_advance(room)
+                        if room.state=="playing" and room.dev_mode: asyncio.create_task(run_bots(room))
+                    else:
+                        await send_state(room)
+                        if room.dev_mode: asyncio.create_task(run_bots(room))
+                        await _start_turn_timer(room)
 
                 elif itype == "chain_discard":
                     cid = raw.get("card_id")

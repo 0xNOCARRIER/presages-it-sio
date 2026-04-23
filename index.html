@@ -187,21 +187,18 @@ input:focus { border-color:var(--gold); }
 /* ── GAME LAYOUT ── */
 #game-screen {
   height:100vh; display:grid;
-  grid-template-columns: clamp(170px, 14vw, 280px) 1fr clamp(210px, 17vw, 340px);
+  grid-template-columns: 1fr;
   gap:clamp(.4rem, .5vw, .8rem); padding:clamp(.4rem, .5vw, .8rem); overflow:hidden;
 }
-#teams-panel { display:flex; flex-direction:column; gap:.55rem; overflow-y:auto; }
-.team-block  { border:1px solid var(--border); border-radius:var(--r); padding:.8rem .9rem; }
-.team-block.winning { border-color:var(--gold-dim); background:rgba(200,168,75,.04); }
-.team-label  { font-family:'Cinzel',serif; font-size:.75rem; letter-spacing:.08em;
-               color:var(--gold-dim); text-transform:uppercase; margin-bottom:.35rem; }
-.team-stars  { color:var(--gold); font-size:1.05rem; margin-bottom:.4rem; }
-.team-member { font-size:1rem; padding:.22rem 0; display:flex; align-items:center; gap:.4rem; }
-.team-member .hcount { margin-left:auto; font-size:.8rem; color:var(--text-dim); }
-.you-crown   { color:var(--gold); font-size:.75rem; }
-.quit-game-btn { margin-top:auto; padding-top:.5rem; }
+#game-controls {
+  display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+  flex-shrink:0; min-height:1.8rem;
+}
+#gc-info { font-family:'Cinzel',serif; font-size:.72rem; color:var(--text-dim); }
+#gc-actions { display:flex; gap:.35rem; align-items:center; }
+.team-sym { font-size:.7rem; margin-left:.2rem; opacity:.75; }
 
-#table-panel { display:flex; flex-direction:column; gap:.5rem; overflow:hidden; position:relative; }
+#table-panel { display:flex; flex-direction:column; gap:.5rem; overflow:visible; position:relative; }
 #turn-indicator {
   text-align:center; font-family:'Cinzel',serif; font-size:calc(.88rem * var(--cs));
   color:var(--gold); letter-spacing:.08em; min-height:1.5rem;
@@ -216,17 +213,6 @@ input:focus { border-color:var(--gold); }
   transition:width .9s linear, background .3s; }
 #timer-bar.urgent { background:#e05050; }
 
-.loi-arrow-btns { display:flex; gap:1.5rem; justify-content:center; margin-top:.5rem; }
-.loi-arrow-btn {
-  display:flex; flex-direction:column; align-items:center; gap:.35rem;
-  background:transparent; border:2px solid var(--gold-dim); color:var(--gold);
-  font-family:'Cinzel',serif; padding:.9rem 2rem; border-radius:var(--r);
-  cursor:pointer; transition:background .2s, border-color .2s; min-width:140px;
-}
-.loi-arrow-btn:hover { background:#c8a84b18; border-color:var(--gold); }
-.loi-arrow-btn .loi-arrow { font-size:2.2rem; line-height:1; }
-.loi-arrow-btn .loi-label { font-size:.75rem; letter-spacing:.1em; }
-.loi-arrow-btn .loi-desc  { font-size:.62rem; color:var(--text-dim); font-family:'Cormorant Garamond',serif; }
 
 #trick-area {
   flex:1; display:flex; flex-direction:column; align-items:stretch; justify-content:center;
@@ -241,22 +227,9 @@ input:focus { border-color:var(--gold); }
 #loi-notice {
   background:#2a2a10; border:1px solid #6a6020; color:#c8b040;
   border-radius:var(--r); padding:.4rem .8rem; font-size:.8rem; text-align:center;
+  max-width:420px; align-self:center;
 }
 
-#chat-panel {
-  display:flex; flex-direction:column; gap:.4rem;
-  border:1px solid var(--border); border-radius:var(--r); padding:.65rem .75rem; overflow:hidden;
-}
-#chat-tab-chat { flex:1; overflow-y:auto; min-height:0; }
-#chat-tab-lasttrick { flex:1; overflow-y:auto; min-height:0; }
-#chat-messages {
-  display:flex; flex-direction:column; gap:.2rem;
-  font-size:.8rem; color:var(--text-dim); line-height:1.45;
-}
-#chat-messages p { padding:.12rem 0; }
-#chat-messages p.system { color:#5a5a7a; font-style:italic; }
-#chat-form { display:flex; gap:.4rem; flex-shrink:0; }
-#chat-input { flex:1; font-size:.8rem; padding:.38rem .6rem; }
 
 /* ── CARD ── */
 .card {
@@ -329,6 +302,7 @@ input:focus { border-color:var(--gold); }
   background:#11101c; border:1px solid var(--gold-dim); border-radius:var(--r);
   padding:.6rem 1.1rem; display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
   flex-shrink:0; animation:bannerIn .2s ease; max-width:540px; align-self:center;
+  position:relative; z-index:15;
 }
 #ab-title { font-family:'Cinzel',serif; color:var(--gold); font-size:.82rem; flex-shrink:0; }
 #ab-msg   { color:var(--text-dim); font-size:.95rem; flex:1; min-width:90px; }
@@ -369,11 +343,11 @@ input:focus { border-color:var(--gold); }
   padding:1.4rem; text-align:center; display:flex; flex-direction:column; gap:.8rem;
   z-index:20; animation:bannerIn .3s ease forwards; min-width:220px;
 }
-#gameover-panel { border-color:var(--gold); }
+#gameover-panel { border-color:var(--gold); min-width:280px; }
 #gameover-verdict {
-  font-family:'Cinzel',serif; font-size:1.4rem; font-weight:600;
+  font-family:'Cinzel',serif; font-size:2rem; font-weight:600; letter-spacing:.05em;
 }
-#gameover-verdict.win  { color:var(--gold); }
+#gameover-verdict.win  { color:var(--gold); text-shadow:0 0 24px rgba(200,168,75,.5); }
 #gameover-verdict.loss { color:var(--text-dim); }
 
 /* ── ADMIN MODAL (conservé) ── */
@@ -503,14 +477,13 @@ input:focus { border-color:var(--gold); }
 
 /* ── PLAYER SHADOWS (ombres joueurs autour de la table) ── */
 #players-top   { display:flex; gap:calc(.5rem * var(--cs)); justify-content:center; flex-shrink:0; flex-wrap:wrap; }
+#players-bottom-sides { display:none; justify-content:space-between; gap:.5rem; flex-shrink:0; }
 #table-middle  { display:flex; gap:calc(.5rem * var(--cs)); align-items:center; flex:1; min-height:var(--ch); overflow:visible; }
-#player-left {
-  flex-shrink:0; display:flex; flex-direction:row; align-items:center; justify-content:flex-end; gap:.35rem;
+#player-left, #player-bottom-left,
+#player-right, #player-bottom-right {
+  flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:.35rem;
 }
-#player-right {
-  flex-shrink:0; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:.35rem;
-}
-#table-center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.6rem; }
+#table-center { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.6rem; }
 
 .player-shadow {
   display:flex; flex-direction:column; align-items:center; gap:.25rem;
@@ -583,25 +556,6 @@ input:focus { border-color:var(--gold); }
 }
 .discard-label { font-size:.56rem; color:var(--text-dim); text-align:center; }
 
-/* ── CHAT TABS ── */
-.chat-tabs { display:flex; gap:.3rem; flex-shrink:0; }
-.chat-tab-btn {
-  flex:1; background:transparent; border:1px solid var(--border); color:var(--text-dim);
-  font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em;
-  padding:.28rem .4rem; border-radius:var(--r); cursor:pointer; transition:all .18s;
-}
-.chat-tab-btn.active { border-color:var(--gold-dim); color:var(--gold); background:#c8a84b0e; }
-.chat-tab-content { flex:1; overflow-y:auto; min-height:0; }
-#last-trick-panel { display:flex; flex-direction:column; gap:.4rem; font-size:.78rem; }
-#last-trick-cards { display:flex; flex-wrap:wrap; gap:.35rem; justify-content:center; margin-top:.3rem; }
-.lt-card-wrap { display:flex; flex-direction:column; align-items:center; gap:.15rem; }
-.lt-card-label { font-size:.6rem; text-align:center; }
-.lt-mini-card {
-  width:calc(72px * var(--cs)); height:calc(104px * var(--cs)); overflow:hidden; position:relative; flex-shrink:0;
-}
-.lt-mini-card .card {
-  position:absolute; top:0; left:0; transform:scale(0.503); transform-origin:top left; pointer-events:none;
-}
 
 /* ── ANIMATIONS ── */
 @keyframes card-to-discard {
@@ -727,8 +681,11 @@ input:focus { border-color:var(--gold); }
 
 <!-- ══════════════════ GAME ══════════════════ -->
 <div id="game-screen" class="hidden">
-  <div id="teams-panel"></div>
   <div id="table-panel">
+    <div id="game-controls">
+      <span id="gc-info"></span>
+      <div id="gc-actions"></div>
+    </div>
     <div id="turn-indicator">En attente…</div>
     <div id="timer-bar-wrap" class="hidden"><div id="timer-bar"></div></div>
     <div id="trick-area">
@@ -746,6 +703,10 @@ input:focus { border-color:var(--gold); }
           </div>
         </div>
         <div id="player-right"></div>
+      </div>
+      <div id="players-bottom-sides">
+        <div id="player-bottom-left"></div>
+        <div id="player-bottom-right"></div>
       </div>
     </div>
     <div id="loi-notice" class="hidden"></div>
@@ -766,30 +727,13 @@ input:focus { border-color:var(--gold); }
     </div>
     <div id="gameover-panel" class="hidden">
       <div id="gameover-verdict"></div>
-      <div id="gameover-detail" class="text-dim" style="font-size:.85rem;"></div>
+      <div id="gameover-detail" class="text-dim" style="font-size:.9rem;margin-top:.25rem;"></div>
       <div id="gameover-scores" class="text-dim" style="font-size:.82rem;"></div>
-      <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.4rem;">
+      <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.6rem;flex-wrap:wrap;">
         <button id="gameover-restart-btn" class="btn primary hidden" onclick="wsSend({action:'restart'})">↺ Nouvelle partie</button>
-        <button class="btn" onclick="showHome()">Quitter la partie</button>
+        <button class="btn danger" onclick="showHome()">✕ Quitter</button>
       </div>
     </div>
-  </div>
-  <div id="chat-panel">
-    <div class="chat-tabs">
-      <button id="chat-theme-btn" class="chat-tab-btn" onclick="toggleTheme()" title="Changer le thème" style="flex:0;padding:.28rem .5rem;">☀</button>
-      <button class="chat-tab-btn active" onclick="switchChatTab('chat')">Messages</button>
-      <button class="chat-tab-btn"        onclick="switchChatTab('lasttrick')">Pli précédent</button>
-    </div>
-    <div id="chat-tab-chat" class="chat-tab-content">
-      <div id="chat-messages"></div>
-    </div>
-    <div id="chat-tab-lasttrick" class="chat-tab-content hidden">
-      <div id="last-trick-panel"><p class="text-dim italic" style="font-size:.78rem;padding:.3rem">Aucun pli joué.</p></div>
-    </div>
-    <form id="chat-form" onsubmit="sendChat(event)">
-      <input type="text" id="chat-input" placeholder="Message…" autocomplete="off" maxlength="200">
-      <button type="submit" class="btn btn-sm">↵</button>
-    </form>
   </div>
 </div>
 
@@ -1032,7 +976,6 @@ function showScreen(id) {
   ['auth-screen','home-screen','lobby-screen','game-screen',
    'history-screen','leaderboard-screen','admin-screen']
     .forEach(s => document.getElementById(s).classList.toggle('hidden', s!==id));
-  document.getElementById('theme-toggle').style.display = id === 'game-screen' ? 'none' : '';
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1151,8 +1094,8 @@ function render(gs) {
   else if (gs.state==='playing')      { _intState={}; document.getElementById('action-bar')?.classList.add('hidden'); renderGame(gs); closeRoundEnd(); closeGameover(); closeTrickReview(); }
   else if (gs.state==='trick_review') { renderGame(gs); if (_lastTrickMsg) showTrickReview(_lastTrickMsg); }
   else if (gs.state==='interactive')  { renderGame(gs); if (_lastTrickMsg && _intState.type==='chain_discard') showTrickReview(_lastTrickMsg); }
-  else if (gs.state==='roundend')     { renderGame(gs); renderRoundEnd(gs); closeGameover(); }
-  else if (gs.state==='gameover')     { renderGame(gs); closeRoundEnd(); renderGameover(gs); }
+  else if (gs.state==='roundend')     { document.getElementById('action-bar')?.classList.add('hidden'); closeTrickReview(); renderGame(gs); renderRoundEnd(gs); closeGameover(); }
+  else if (gs.state==='gameover')     { document.getElementById('action-bar')?.classList.add('hidden'); closeTrickReview(); renderGame(gs); closeRoundEnd(); renderGameover(gs); }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1197,12 +1140,18 @@ function getPlayerPositions(gs) {
     const p = gs.players.find(p => p.id === pid);
     if (p) others.push(p);
   }
-  if (others.length <= 1) return {left: null, top: others, right: null};
-  if (others.length === 2) return {left: others[0], top: [], right: others[1]};
-  if (others.length === 3) return {left: others[0], top: [others[1]], right: others[2]};
-  if (others.length === 4) return {left: others[0], top: [others[1], others[2]], right: others[3]};
-  // 5 others (6 joueurs)
-  return {left: others[0], top: [others[1], others[2], others[3]], right: others[4]};
+  if (others.length <= 1) return {left: null, top: others, right: null, bottomLeft: null, bottomRight: null};
+  if (others.length === 2) return {left: others[0], top: [], right: others[1], bottomLeft: null, bottomRight: null};
+  if (others.length === 3) return {left: others[0], top: [others[1]], right: others[2], bottomLeft: null, bottomRight: null};
+  if (others.length === 4) return {left: others[0], top: [others[1], others[2]], right: others[3], bottomLeft: null, bottomRight: null};
+  // 5 others (6 joueurs) → disposition hexagonale
+  return {bottomLeft: others[0], left: others[1], top: [others[2]], right: others[3], bottomRight: others[4]};
+}
+
+const TEAM_SYMBOLS = ['★', '☾', '◆'];
+function teamSymbol(pid, gs) {
+  const ti = (gs.teams||[]).findIndex(t => t.members.some(m => m.id === pid));
+  return ti >= 0 ? TEAM_SYMBOLS[ti] || '' : '';
 }
 
 function playerShadowHTML(p, gs) {
@@ -1211,6 +1160,7 @@ function playerShadowHTML(p, gs) {
   const isNext = gs.next_to_play === p.id;
   const playedCard = gs.current_trick?.[p.id];
   const count = Math.min(p.hand_count, 5);
+  const sym = teamSymbol(p.id, gs);
   const cls = ['player-shadow', isNext ? 'my-turn-soon' : '', sameTeam ? 'same-team' : ''].filter(Boolean).join(' ');
   const miniCards = Array.from({length: count}, (_,i) =>
     `<div class="shadow-card-mini" style="opacity:${0.5 + i*0.1}"></div>`).join('');
@@ -1220,8 +1170,9 @@ function playerShadowHTML(p, gs) {
     : '';
   const cardsRow = `<div class="shadow-cards">${miniCards}<span class="shadow-count">${p.hand_count}</span></div>`;
   const arrow = isNext ? `<span class="turn-arrow">▶</span>` : '';
+  const symTag = sym ? `<span class="team-sym">${sym}</span>` : '';
   return `<div class="${cls}" data-pid="${esc(p.id)}">
-    <div class="shadow-name">${esc(p.username)}${p.is_bot?' 🤖':''}${arrow}</div>
+    <div class="shadow-name">${esc(p.username)}${p.is_bot?' 🤖':''}${symTag}${arrow}</div>
     ${cardsRow}
     ${playedIndicator}
     ${playedHTML}
@@ -1252,56 +1203,17 @@ function renderGame(gs) {
   if (gs.state !== 'roundend')  document.getElementById('roundend-panel').classList.add('hidden');
   if (gs.state !== 'gameover') document.getElementById('gameover-panel').classList.add('hidden');
 
-  // Teams
-  const tp = document.getElementById('teams-panel');
-  tp.innerHTML = `<h3 style="margin-bottom:.4rem">Équipes · M${gs.round_num}</h3>`;
-  gs.teams.forEach((t,ti)=>{
-    const div = document.createElement('div');
-    div.className = 'team-block' + (t.wins>0?' winning':'');
-    div.innerHTML = `
-      <div class="team-label">Équipe ${ti+1}</div>
-      <div class="team-stars">${'★'.repeat(t.wins)}${'☆'.repeat(Math.max(0,2-t.wins))}</div>
-      ${t.members.map(m=>{
-        const pp = gs.players.find(p=>p.id===m.id);
-        const isYou = m.id===S.me?.id;
-        return `<div class="team-member">
-          ${isYou?'<span class="you-crown">♦</span>':''}
-          <span>${esc(m.username)}</span>
-          <span class="hcount">${pp?pp.hand_count:0}🃏</span>
-        </div>`;
-      }).join('')}`;
-    tp.appendChild(div);
-  });
-
-  // Boutons bas du panel (bannière pli + Continuer + Quitter)
-  const quitWrap = document.createElement('div');
-  quitWrap.className = 'quit-game-btn';
-  if (gs.state === 'trick_review') {
-    if (_lastTrickMsg) {
-      const bannerDiv = document.createElement('div');
-      bannerDiv.className = 'trick-banner';
-      const effects = (_lastTrickMsg.messages||[]).join(' · ');
-      bannerDiv.innerHTML =
-        `<span class="tb-title">✅ ${esc(_lastTrickMsg.winner_name)} remporte le pli !</span>` +
-        (effects ? `<span class="tb-effects">${esc(effects)}</span>` : '');
-      quitWrap.appendChild(bannerDiv);
-    }
-    if (gs.host_id === S.me?.id) {
-      const cont = document.createElement('button');
-      cont.className = 'btn btn-sm primary';
-      cont.style.cssText = 'width:100%;margin-top:.35rem;margin-bottom:.35rem';
-      cont.textContent = 'Continuer ▶';
-      cont.onclick = continueTrick;
-      quitWrap.appendChild(cont);
-    }
-  }
-  const quitBtn = document.createElement('button');
-  quitBtn.className = 'btn btn-sm danger';
-  quitBtn.style.width = '100%';
-  quitBtn.textContent = 'Quitter la partie';
-  quitBtn.onclick = showHome;
-  quitWrap.appendChild(quitBtn);
-  tp.appendChild(quitWrap);
+  // Game controls bar (round info + quit button)
+  const gcInfo = document.getElementById('gc-info');
+  const gcActs = document.getElementById('gc-actions');
+  const teamScores = (gs.teams||[]).map((t,i) =>
+    `${TEAM_SYMBOLS[i]||('Éq.'+(i+1))} ${'★'.repeat(t.wins)}${'☆'.repeat(Math.max(0,2-t.wins))}`
+  ).join('  ');
+  gcInfo.textContent = `M${gs.round_num}  ${teamScores}`;
+  gcActs.innerHTML = '';
+  const qb = document.createElement('button');
+  qb.className = 'btn btn-sm danger'; qb.textContent = '✕ Quitter'; qb.onclick = showHome;
+  gcActs.appendChild(qb);
 
   // Turn indicator
   const ntp = gs.next_to_play;
@@ -1354,8 +1266,33 @@ function renderGame(gs) {
     const cardPart = card
       ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.right.id)}">${cardHTML(card, false, false, true)}</div>`
       : '';
-    rightEl.innerHTML = cardPart + playerShadowHTML(pos.right, gs);
+    rightEl.innerHTML = playerShadowHTML(pos.right, gs) + cardPart;
   } else { rightEl.innerHTML = ''; }
+
+  // Joueurs bas-gauche et bas-droite (layout 6 joueurs)
+  const bottomSides = document.getElementById('players-bottom-sides');
+  const bLeftEl  = document.getElementById('player-bottom-left');
+  const bRightEl = document.getElementById('player-bottom-right');
+  if (pos.bottomLeft || pos.bottomRight) {
+    bottomSides.style.display = 'flex';
+    if (pos.bottomLeft) {
+      const card = gs.current_trick?.[pos.bottomLeft.id];
+      const cardPart = card
+        ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.bottomLeft.id)}">${cardHTML(card, false, false, true)}</div>`
+        : '';
+      bLeftEl.innerHTML = playerShadowHTML(pos.bottomLeft, gs) + cardPart;
+    } else { bLeftEl.innerHTML = ''; }
+    if (pos.bottomRight) {
+      const card = gs.current_trick?.[pos.bottomRight.id];
+      const cardPart = card
+        ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.bottomRight.id)}">${cardHTML(card, false, false, true)}</div>`
+        : '';
+      bRightEl.innerHTML = playerShadowHTML(pos.bottomRight, gs) + cardPart;
+    } else { bRightEl.innerHTML = ''; }
+  } else {
+    bottomSides.style.display = 'none';
+    bLeftEl.innerHTML = ''; bRightEl.innerHTML = '';
+  }
 
   // Centre : label du pli (les cartes sont désormais au bord, pas au centre)
   const tc = document.getElementById('trick-cards');
@@ -1407,9 +1344,6 @@ function renderGame(gs) {
       myHand.appendChild(c);
     });
   }
-
-  // Last trick tab
-  renderLastTrick(gs);
 
   // Cibles interactives (si état interactif en cours)
   applyInteractionTargets();
@@ -1498,6 +1432,20 @@ function showTrickReview(msg) {
     }
   });
 
+  // Afficher résultat dans l'action-bar + bouton Continuer pour l'hôte
+  const bar = document.getElementById('action-bar');
+  document.getElementById('ab-title').textContent = `✅ ${esc(msg.winner_name)} remporte le pli !`;
+  const effects = (msg.messages||[]).join(' · ');
+  document.getElementById('ab-msg').textContent = effects || '';
+  const choices = document.getElementById('ab-choices');
+  choices.innerHTML = '';
+  if (gs?.host_id === S.me?.id) {
+    const cont = document.createElement('button');
+    cont.className = 'ab-btn'; cont.textContent = 'Continuer ▶';
+    cont.onclick = continueTrick;
+    choices.appendChild(cont);
+  }
+  bar.classList.remove('hidden');
 }
 
 // Fait "voler" un élément d'une position à une autre
@@ -1566,48 +1514,6 @@ function continueTrick() {
   setTimeout(()=>{ closeTrickReview(); wsSend({action:'continue_trick'}); }, 650);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// LAST TRICK + CHAT TABS
-// ─────────────────────────────────────────────────────────────────
-let _chatTab = 'chat';
-function switchChatTab(tab) {
-  _chatTab = tab;
-  document.querySelectorAll('.chat-tab-btn').forEach((b,i) =>
-    b.classList.toggle('active', (i===0&&tab==='chat')||(i===1&&tab==='lasttrick')));
-  document.getElementById('chat-tab-chat').classList.toggle('hidden', tab !== 'chat');
-  document.getElementById('chat-tab-lasttrick').classList.toggle('hidden', tab !== 'lasttrick');
-}
-
-function renderLastTrick(gs) {
-  const lt = gs.last_trick;
-  const panel = document.getElementById('last-trick-panel');
-  if (!lt) {
-    panel.innerHTML = '<p class="text-dim italic" style="font-size:.78rem;padding:.3rem">Aucun pli joué.</p>';
-    return;
-  }
-  const discardedIds = new Set([...(lt.discarded_ids||[]), ...(lt.chain_discard_ids||[])]);
-  const cardsHTML = Object.entries(lt.played||{}).map(([ppid, card]) => {
-    const player = gs.players.find(p=>p.id===ppid);
-    const isDiscard = discardedIds.has(card.id);
-    const isWinner  = ppid === lt.winner_pid;
-    const lblColor = isWinner ? 'var(--gold)' : isDiscard ? '#e05050' : 'var(--text-dim)';
-    const lbl = isWinner ? `★ ${player?.username||ppid}` :
-                isDiscard ? `✕ ${player?.username||ppid}` :
-                `↩ ${player?.username||ppid}`;
-    return `<div class="lt-card-wrap">
-      <div class="lt-mini-card">${cardHTML(card,false,false,true)}</div>
-      <div class="lt-card-label" style="color:${lblColor}">${esc(lbl)}</div>
-    </div>`;
-  }).join('');
-  const msgsHTML = (lt.messages||[]).map(m=>`<div style="font-size:.72rem;color:var(--text-dim)">${esc(m)}</div>`).join('');
-  panel.innerHTML = `
-    <div style="font-size:.72rem;color:var(--gold);font-family:'Cinzel',serif;padding:.3rem">
-      ✅ ${esc(lt.winner_name)} a remporté ce pli
-    </div>
-    <div id="last-trick-cards">${cardsHTML}</div>
-    ${msgsHTML ? `<div style="padding:.2rem 0">${msgsHTML}</div>` : ''}
-  `;
-}
 
 // ─────────────────────────────────────────────────────────────────
 // ROUND END
@@ -1629,11 +1535,14 @@ function renderGameover(gs) {
   const verdict = document.getElementById('gameover-verdict');
   verdict.textContent = iWon ? '✦ Victoire !' : '✕ Défaite';
   verdict.className = iWon ? 'win' : 'loss';
+  const winSymbol = winningTeamIdx >= 0 ? (TEAM_SYMBOLS[winningTeamIdx] || `Éq.${winningTeamIdx+1}`) : '?';
   const winners = winningTeamIdx !== -1 ? gs.teams[winningTeamIdx].members.map(m=>esc(m.username)).join(', ') : '?';
   document.getElementById('gameover-detail').innerHTML =
-    `Équipe victorieuse : <strong>${winners}</strong>`;
+    iWon
+      ? `Votre équipe ${winSymbol} remporte la partie !`
+      : `L'équipe ${winSymbol} (<strong>${winners}</strong>) remporte la partie.`;
   document.getElementById('gameover-scores').textContent =
-    gs.teams.map((t,i) => `Éq.${i+1} : ${t.wins}/2`).join('  ·  ');
+    gs.teams.map((t,i) => `${TEAM_SYMBOLS[i]||('Éq.'+(i+1))} : ${t.wins}/2`).join('  ·  ');
   document.getElementById('gameover-restart-btn').classList.toggle('hidden', gs.host_id !== S.me?.id);
 }
 function closeGameover() { document.getElementById('gameover-panel').classList.add('hidden'); }
@@ -1659,15 +1568,13 @@ function openInteraction(msg) {
   const itype = msg.interaction;
 
   if (itype === 'loi') {
-    abMsg.textContent = 'Imposez une contrainte aux joueurs suivants :';
-    const wrap = document.createElement('div'); wrap.className = 'loi-arrow-btns';
-    [['lower','▼','< 15','Carte inférieure à 15'],['higher','▲','> 15','Carte supérieure à 15']].forEach(([val,arrow,label,desc]) => {
-      const btn = document.createElement('button'); btn.className='loi-arrow-btn';
-      btn.innerHTML = `<span class="loi-arrow">${arrow}</span><span class="loi-label">${label}</span><span class="loi-desc">${desc}</span>`;
+    abMsg.textContent = 'Contrainte pour les joueurs suivants :';
+    [['lower','▼ Inférieure à 15'],['higher','▲ Supérieure à 15']].forEach(([val,label]) => {
+      const btn = document.createElement('button'); btn.className='ab-btn';
+      btn.textContent = label;
       btn.onclick = () => { _intState.selected.direction=val; sendInteraction(); };
-      wrap.appendChild(btn);
+      document.getElementById('ab-choices').appendChild(btn);
     });
-    document.getElementById('ab-choices').appendChild(wrap);
   } else if (itype === 'secret') {
     abMsg.textContent = 'Montrez votre main ou voyez celle d\'un joueur ?';
     ['show_to','see_from'].forEach(val => {
@@ -1869,19 +1776,22 @@ function interactionTitle(t) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SECRET REVEAL — affiché dans le chat
+// SECRET REVEAL — affiché dans l'action-bar (chat supprimé)
 // ─────────────────────────────────────────────────────────────────
+let _secretRevealTimer = null;
 function showSecretReveal(msg) {
-  const chatMessages = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.style.cssText = 'border:1px solid var(--gold-dim);border-radius:var(--r);padding:.5rem .7rem;margin:.3rem 0;';
-  div.innerHTML =
-    `<div style="font-size:.75rem;color:var(--gold);font-family:Cinzel,serif;margin-bottom:.35rem">🔍 ${esc(msg.msg||'Main révélée')}</div>` +
-    `<div style="display:flex;flex-wrap:wrap;gap:.25rem">${(msg.cards||[]).map(c=>cardHTML(c,false,true,true)).join('')}</div>`;
-  chatMessages.appendChild(div);
-  switchChatTab('chat');
-  const container = document.getElementById('chat-tab-chat');
-  if (container) container.scrollTop = container.scrollHeight;
+  clearTimeout(_secretRevealTimer);
+  const bar = document.getElementById('action-bar');
+  document.getElementById('ab-title').textContent = `🔍 ${esc(msg.msg || 'Main révélée')}`;
+  document.getElementById('ab-msg').textContent = '';
+  const choices = document.getElementById('ab-choices');
+  choices.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:.25rem">${(msg.cards||[]).map(c=>cardHTML(c,false,true,true)).join('')}</div>`;
+  bar.classList.remove('hidden');
+  _secretRevealTimer = setTimeout(() => {
+    if (S.gs?.state !== 'trick_review' && S.gs?.state !== 'interactive') {
+      bar.classList.add('hidden');
+    }
+  }, 6000);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1890,22 +1800,8 @@ function showSecretReveal(msg) {
 function startGame() { wsSend({action:'start'}); }
 function playCard(id){ wsSend({action:'play_card',card_id:id}); }
 
-// ─────────────────────────────────────────────────────────────────
-// CHAT
-// ─────────────────────────────────────────────────────────────────
-function appendChat(msg) {
-  const el=document.getElementById('chat-messages'); if(!el)return;
-  const p=document.createElement('p'); p.textContent=msg;
-  if(msg.startsWith('✨')||msg.startsWith('👋')||msg.startsWith('🔮')||msg.startsWith('🎉'))p.classList.add('system');
-  el.appendChild(p);
-  const container=document.getElementById('chat-tab-chat');
-  if(container) container.scrollTop=container.scrollHeight;
-}
-function sendChat(e) {
-  e.preventDefault();
-  const inp=document.getElementById('chat-input'); const t=inp.value.trim(); if(!t)return;
-  wsSend({action:'chat',text:t}); inp.value='';
-}
+function appendChat(msg) { /* chat supprimé */ }
+function sendChat(e) { e.preventDefault(); }
 
 // ─────────────────────────────────────────────────────────────────
 // LEADERBOARD
