@@ -38,6 +38,10 @@
 @media (min-width: 2200px) and (max-width: 2559px) { :root { --cs: 1.22; } }
 /* 4K */
 @media (min-width: 2560px) { :root { --cs: 1.40; } }
+/* Ajustement vertical : écrase la valeur largeur si l'écran est peu haut */
+@media (max-height: 880px) { :root { --cs: 0.72; } }
+@media (max-height: 760px) { :root { --cs: 0.63; } }
+@media (max-height: 640px) { :root { --cs: 0.55; } }
 
 [data-theme="light"] {
   --bg:        #3a362f;
@@ -499,7 +503,7 @@ input:focus { border-color:var(--gold); }
 
 /* ── PLAYER SHADOWS (ombres joueurs autour de la table) ── */
 #players-top   { display:flex; gap:calc(.5rem * var(--cs)); justify-content:center; flex-shrink:0; flex-wrap:wrap; }
-#table-middle  { display:flex; gap:calc(.5rem * var(--cs)); align-items:center; flex:1; min-height:0; overflow:visible; }
+#table-middle  { display:flex; gap:calc(.5rem * var(--cs)); align-items:center; flex:1; min-height:var(--ch); overflow:visible; }
 #player-left {
   flex-shrink:0; display:flex; flex-direction:row; align-items:center; justify-content:flex-end; gap:.35rem;
 }
@@ -624,17 +628,6 @@ input:focus { border-color:var(--gold); }
 
 <div id="error-banner"   class="hidden"></div>
 <div id="success-banner" class="hidden"></div>
-
-<!-- ══════════════════ GATE ══════════════════ -->
-<div id="gate-screen" class="full-center">
-  <h1>✦ Présages</h1>
-  <p class="text-dim italic">Accès privé</p>
-  <div class="panel">
-    <label class="text-dim">Mot de passe d'accès</label>
-    <input type="password" id="gate-pass" placeholder="••••••••" autocomplete="off">
-    <button class="btn primary" id="gate-btn" onclick="submitGate()">Entrer ✦</button>
-  </div>
-</div>
 
 <!-- ══════════════════ AUTH ══════════════════ -->
 <div id="auth-screen" class="full-center hidden">
@@ -1017,7 +1010,7 @@ async function api(method, path, body) {
 }
 
 function showScreen(id) {
-  ['gate-screen','auth-screen','home-screen','lobby-screen','game-screen',
+  ['auth-screen','home-screen','lobby-screen','game-screen',
    'history-screen','leaderboard-screen','admin-screen']
     .forEach(s => document.getElementById(s).classList.toggle('hidden', s!==id));
   document.getElementById('theme-toggle').style.display = id === 'game-screen' ? 'none' : '';
@@ -2228,25 +2221,6 @@ function openChangePw() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// GATE (accès privé)
-// ─────────────────────────────────────────────────────────────────
-const _GATE_KEY = 'presages_gate_v1';
-const _GATE_PW  = 'Interface-bleme&calamar';
-
-function submitGate() {
-  const val = document.getElementById('gate-pass').value;
-  if (val === _GATE_PW) {
-    localStorage.setItem(_GATE_KEY, '1');
-    init();
-  } else {
-    showErr('Mot de passe incorrect.');
-    document.getElementById('gate-pass').value = '';
-    document.getElementById('gate-pass').focus();
-  }
-}
-document.getElementById('gate-pass').addEventListener('keydown', e => { if (e.key === 'Enter') submitGate(); });
-
-// ─────────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────────
 async function init() {
@@ -2256,10 +2230,7 @@ async function init() {
   } catch { showScreen('auth-screen'); }
 }
 
-if (localStorage.getItem(_GATE_KEY) === '1') {
-  init();
-}
-// sinon le gate-screen reste visible par défaut
+init();
 </script>
 </body>
 </html>

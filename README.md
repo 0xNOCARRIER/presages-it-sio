@@ -104,10 +104,6 @@ Tables : `users` (comptes), `game_history` (historique des parties).
 - Chat en temps réel
 - Historique des parties par joueur
 
-## Accès privé
-
-Une page de protection par mot de passe s'affiche avant tout accès au site. Le mot de passe est stocké dans le localStorage après validation (pas de re-saisie à chaque visite). Pour réinitialiser l'accès, vider le localStorage du navigateur.
-
 ## Gestion des comptes
 
 L'inscription publique est **désactivée**. Seul l'administrateur peut créer des comptes, via le panneau d'administration → onglet **Comptes**.
@@ -137,7 +133,6 @@ Pour conserver les données après un `git pull` : exportez avant, puis importez
 
 Toutes les actions se déroulent directement sur le plateau de jeu, sans popup ni fenêtre modale :
 
-- **Page de garde** : protection par mot de passe avant toute connexion
 - **Résultat du pli** : affiché dans le panel équipes (gauche), au-dessus des boutons d'action
 - **Effets interactifs** (La Jalousie, La Colère, La Trahison, Le Rêve, L'Absolu, La Loi, Le Secret) : une barre contextuelle apparaît au-dessus de la main ; les éléments du plateau (cartes adverses, ombres de joueurs, cartes en main) s'illuminent et deviennent cliquables directement
 - **Main révélée** (Le Secret) : affichée dans le chat
