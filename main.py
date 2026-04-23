@@ -733,6 +733,23 @@ async def _play_card_logic(room: GameRoom, pid: str, card: dict):
     eff    = card["effect_type"]
     is_bot = pid.startswith("bot_")
 
+    has_other_cards = any(p != pid for p in room.current_trick)
+
+    # Ces effets nécessitent une carte adverse déjà en jeu pour avoir une cible
+    if eff in ("jalousie", "colere", "trahison") and not is_bot and not has_other_cards:
+        await broadcast(room, {"type": "chat",
+            "msg": f"💨 {uname} joue {card['name']} : aucune cible en jeu, effet sans résultat."})
+        if len(room.current_trick) == len(room.players):
+            await _resolve_and_advance(room)
+            if room.state == "playing" and room.dev_mode:
+                asyncio.create_task(run_bots(room))
+        else:
+            await send_state(room)
+            if room.dev_mode:
+                asyncio.create_task(run_bots(room))
+            await _start_turn_timer(room)
+        return
+
     if eff in INTERACTIVE_EFFECTS and not is_bot:
         room.state = "interactive"
         room.pending_interaction = {"type": eff, "actor_pid": pid, "card_id": card["id"]}

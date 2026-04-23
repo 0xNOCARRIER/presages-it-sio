@@ -186,8 +186,7 @@ input:focus { border-color:var(--gold); }
 
 /* ── GAME LAYOUT ── */
 #game-screen {
-  height:100vh; display:grid;
-  grid-template-columns: 1fr;
+  height:100vh; display:flex; flex-direction:column;
   gap:clamp(.4rem, .5vw, .8rem); padding:clamp(.4rem, .5vw, .8rem); overflow:hidden;
 }
 #game-controls {
@@ -198,7 +197,7 @@ input:focus { border-color:var(--gold); }
 #gc-actions { display:flex; gap:.35rem; align-items:center; }
 .team-sym { font-size:.7rem; margin-left:.2rem; opacity:.75; }
 
-#table-panel { display:flex; flex-direction:column; gap:.5rem; overflow:visible; position:relative; }
+#table-panel { display:flex; flex-direction:column; gap:.5rem; flex:1; min-height:0; overflow:hidden; position:relative; }
 #turn-indicator {
   text-align:center; font-family:'Cinzel',serif; font-size:calc(.88rem * var(--cs));
   color:var(--gold); letter-spacing:.08em; min-height:1.5rem;
@@ -221,7 +220,7 @@ input:focus { border-color:var(--gold); }
 #trick-label { font-size:.75rem; color:var(--text-dim); font-style:italic; }
 #trick-cards { display:flex; flex-wrap:wrap; gap:calc(.9rem * var(--cs)); justify-content:center; align-items:flex-end; }
 
-#hand-area { text-align:center; position:relative; z-index:10; background:var(--bg); }
+#hand-area { text-align:center; position:relative; z-index:10; background:var(--bg); flex-shrink:0; }
 #hand-label { font-size:.72rem; color:var(--text-dim); margin-bottom:.4rem; }
 #my-hand    { display:flex; flex-wrap:wrap; gap:calc(.55rem * var(--cs)); justify-content:center; padding:.3rem; min-height:calc(100px * var(--cs)); }
 #loi-notice {
@@ -336,19 +335,31 @@ input:focus { border-color:var(--gold); }
   box-shadow:0 0 14px rgba(95,211,138,.4) !important;
 }
 
-/* ── FIN DE MANCHE / FIN DE PARTIE (panels centrés sur le plateau) ── */
-#roundend-panel, #gameover-panel {
+/* ── FIN DE MANCHE ── */
+#roundend-panel {
   position:absolute; left:50%; top:45%; transform:translate(-50%,-50%);
   background:var(--surface); border:1px solid var(--gold-dim); border-radius:var(--r);
   padding:1.4rem; text-align:center; display:flex; flex-direction:column; gap:.8rem;
   z-index:20; animation:bannerIn .3s ease forwards; min-width:220px;
 }
-#gameover-panel { border-color:var(--gold); min-width:280px; }
-#gameover-verdict {
-  font-family:'Cinzel',serif; font-size:2rem; font-weight:600; letter-spacing:.05em;
+
+/* ── ÉCRAN FIN DE PARTIE ── */
+#gameover-screen {
+  height:100vh; display:flex; align-items:center; justify-content:center;
+  background:var(--bg);
 }
-#gameover-verdict.win  { color:var(--gold); text-shadow:0 0 24px rgba(200,168,75,.5); }
+#gameover-inner {
+  display:flex; flex-direction:column; align-items:center; gap:1.4rem;
+  text-align:center; max-width:440px; padding:2.2rem 2.5rem;
+  border:1px solid var(--gold-dim); border-radius:var(--r);
+  background:var(--surface); animation:bannerIn .4s ease;
+}
+#gameover-verdict {
+  font-family:'Cinzel',serif; font-size:clamp(2rem,5vw,2.8rem); font-weight:700; letter-spacing:.12em;
+}
+#gameover-verdict.win  { color:var(--gold); text-shadow:0 0 40px rgba(200,168,75,.4); }
 #gameover-verdict.loss { color:var(--text-dim); }
+#gameover-actions { display:flex; gap:.7rem; justify-content:center; flex-wrap:wrap; }
 
 /* ── ADMIN MODAL (conservé) ── */
 
@@ -486,10 +497,14 @@ input:focus { border-color:var(--gold); }
 #table-center { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.6rem; }
 
 .player-shadow {
-  display:flex; flex-direction:column; align-items:center; gap:.25rem;
-  padding:calc(.45rem * var(--cs)) calc(.55rem * var(--cs)); border:1px solid var(--border); border-radius:var(--r);
+  display:flex; flex-direction:row; align-items:center; gap:.4rem;
+  padding:calc(.35rem * var(--cs)) calc(.45rem * var(--cs)); border:1px solid var(--border); border-radius:var(--r);
   background:var(--surface); transition:border-color .25s, background .25s;
-  min-width:calc(80px * var(--cs));
+  position:relative;
+}
+.shadow-info {
+  display:flex; flex-direction:column; align-items:center; gap:.2rem;
+  min-width:calc(65px * var(--cs));
 }
 .player-shadow.my-turn-soon {
   border-color:var(--gold); background:rgba(200,168,75,.1);
@@ -519,9 +534,29 @@ input:focus { border-color:var(--gold); }
   background:#1a1820; border:1px solid var(--gold-dim); border-radius:3px;
   padding:.06rem .35rem; line-height:1.4; margin-left:.15rem;
 }
-.shadow-played { margin-top:.3rem; flex-shrink:0; }
-.shadow-played .card { pointer-events:none; }
-.shadow-played.empty { display:none; }
+.shadow-played {
+  width:calc(var(--cw) * 0.45); height:calc(var(--ch) * 0.45);
+  flex-shrink:0; position:relative; overflow:hidden;
+  border-radius:calc(4px * var(--cs));
+}
+.shadow-played.empty { border:1px dashed var(--border); opacity:.35; }
+.shadow-played > .card {
+  position:absolute; top:0; left:0;
+  transform:scale(0.45); transform-origin:top left;
+  pointer-events:none;
+}
+.shadow-played .trick-status {
+  position:absolute; bottom:0; left:0; right:0; font-size:calc(.42rem * var(--cs));
+  background:rgba(0,0,0,.85); padding:1px 2px; z-index:10;
+  border-radius:0 0 calc(4px * var(--cs)) calc(4px * var(--cs));
+}
+.shadow-played.winner-glow { animation:slotglow 2s ease forwards; }
+@keyframes slotglow {
+  0%   { box-shadow:0 0 0 rgba(200,168,75,0); }
+  25%  { box-shadow:0 0 18px rgba(200,168,75,.95); border-color:var(--gold); }
+  75%  { box-shadow:0 0 18px rgba(200,168,75,.7);  border-color:var(--gold); }
+  100% { box-shadow:0 0 0  rgba(200,168,75,0); }
+}
 
 /* ── CARTES JOUÉES POSITIONNELLES ── */
 .player-slot-top { display:flex; flex-direction:column; align-items:center; gap:.35rem; }
@@ -530,8 +565,9 @@ input:focus { border-color:var(--gold); }
 
 /* Carte jouée par le joueur local, au-dessus de sa main */
 #my-played-area {
-  display:flex; justify-content:center; align-items:flex-end; padding:.15rem 0;
-  flex-shrink:0; gap:.4rem; position:relative; z-index:10; background:var(--bg);
+  display:flex; justify-content:center; align-items:center; padding:.1rem 0;
+  flex-shrink:0; gap:.6rem; position:relative; z-index:10; background:var(--bg);
+  min-height:calc(var(--ch) * 0.45 + .2rem);
 }
 #my-played-area .played-by { font-size:.72rem; color:var(--text-dim); font-style:italic; }
 
@@ -715,7 +751,7 @@ input:focus { border-color:var(--gold); }
       <span id="ab-msg"></span>
       <div id="ab-choices"></div>
     </div>
-    <div id="my-played-area" class="hidden"></div>
+    <div id="my-played-area"></div>
     <div id="hand-area">
       <p id="hand-label" class="text-dim">Votre main</p>
       <div id="my-hand"></div>
@@ -725,14 +761,18 @@ input:focus { border-color:var(--gold); }
       <div id="roundend-scores" class="text-dim"></div>
       <button class="btn primary" id="next-round-btn" onclick="nextRound()">Manche suivante</button>
     </div>
-    <div id="gameover-panel" class="hidden">
-      <div id="gameover-verdict"></div>
-      <div id="gameover-detail" class="text-dim" style="font-size:.9rem;margin-top:.25rem;"></div>
-      <div id="gameover-scores" class="text-dim" style="font-size:.82rem;"></div>
-      <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.6rem;flex-wrap:wrap;">
-        <button id="gameover-restart-btn" class="btn primary hidden" onclick="wsSend({action:'restart'})">↺ Nouvelle partie</button>
-        <button class="btn danger" onclick="showHome()">✕ Quitter</button>
-      </div>
+  </div>
+</div>
+
+<!-- ══════════════════ GAMEOVER ══════════════════ -->
+<div id="gameover-screen" class="hidden">
+  <div id="gameover-inner">
+    <div id="gameover-verdict"></div>
+    <div id="gameover-detail" class="text-dim" style="font-size:1rem;"></div>
+    <div id="gameover-scores" class="text-dim" style="font-size:.88rem;"></div>
+    <div id="gameover-actions">
+      <button id="gameover-restart-btn" class="btn primary hidden" onclick="wsSend({action:'restart'})">↺ Nouvelle partie</button>
+      <button class="btn danger" onclick="showHome()">✕ Quitter la partie</button>
     </div>
   </div>
 </div>
@@ -973,7 +1013,7 @@ async function api(method, path, body) {
 }
 
 function showScreen(id) {
-  ['auth-screen','home-screen','lobby-screen','game-screen',
+  ['auth-screen','home-screen','lobby-screen','game-screen','gameover-screen',
    'history-screen','leaderboard-screen','admin-screen']
     .forEach(s => document.getElementById(s).classList.toggle('hidden', s!==id));
 }
@@ -1095,7 +1135,7 @@ function render(gs) {
   else if (gs.state==='trick_review') { renderGame(gs); if (_lastTrickMsg) showTrickReview(_lastTrickMsg); }
   else if (gs.state==='interactive')  { renderGame(gs); if (_lastTrickMsg && _intState.type==='chain_discard') showTrickReview(_lastTrickMsg); }
   else if (gs.state==='roundend')     { document.getElementById('action-bar')?.classList.add('hidden'); closeTrickReview(); renderGame(gs); renderRoundEnd(gs); closeGameover(); }
-  else if (gs.state==='gameover')     { document.getElementById('action-bar')?.classList.add('hidden'); closeTrickReview(); renderGame(gs); closeRoundEnd(); renderGameover(gs); }
+  else if (gs.state==='gameover')     { closeTrickReview(); closeRoundEnd(); renderGameover(gs); }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1164,18 +1204,18 @@ function playerShadowHTML(p, gs) {
   const cls = ['player-shadow', isNext ? 'my-turn-soon' : '', sameTeam ? 'same-team' : ''].filter(Boolean).join(' ');
   const miniCards = Array.from({length: count}, (_,i) =>
     `<div class="shadow-card-mini" style="opacity:${0.5 + i*0.1}"></div>`).join('');
-  const playedHTML = `<div class="shadow-played empty"></div>`;
-  const playedIndicator = playedCard
-    ? `<div style="font-size:calc(.6rem * var(--cs));color:var(--gold);letter-spacing:.04em;font-family:'Cinzel',serif;">✓ joué</div>`
-    : '';
   const cardsRow = `<div class="shadow-cards">${miniCards}<span class="shadow-count">${p.hand_count}</span></div>`;
   const arrow = isNext ? `<span class="turn-arrow">▶</span>` : '';
   const symTag = sym ? `<span class="team-sym">${sym}</span>` : '';
+  const playedSlot = playedCard
+    ? `<div class="shadow-played played-wrapper" data-pid="${esc(p.id)}">${cardHTML(playedCard, false, false, true)}</div>`
+    : `<div class="shadow-played empty played-wrapper" data-pid="${esc(p.id)}"></div>`;
   return `<div class="${cls}" data-pid="${esc(p.id)}">
-    <div class="shadow-name">${esc(p.username)}${p.is_bot?' 🤖':''}${symTag}${arrow}</div>
-    ${cardsRow}
-    ${playedIndicator}
-    ${playedHTML}
+    <div class="shadow-info">
+      <div class="shadow-name">${esc(p.username)}${p.is_bot?' 🤖':''}${symTag}${arrow}</div>
+      ${cardsRow}
+    </div>
+    ${playedSlot}
   </div>`;
 }
 
@@ -1201,7 +1241,6 @@ function renderDiscardPile(gs) {
 function renderGame(gs) {
   showScreen('game-screen');
   if (gs.state !== 'roundend')  document.getElementById('roundend-panel').classList.add('hidden');
-  if (gs.state !== 'gameover') document.getElementById('gameover-panel').classList.add('hidden');
 
   // Game controls bar (round info + quit button)
   const gcInfo = document.getElementById('gc-info');
@@ -1240,34 +1279,18 @@ function renderGame(gs) {
   // Joueurs et cartes jouées positionnées autour de la table
   const pos = getPlayerPositions(gs);
 
-  // Joueurs du haut : shadow en haut, carte jouée en dessous
-  document.getElementById('players-top').innerHTML = (pos.top||[]).map(p => {
-    const card = gs.current_trick?.[p.id];
-    const cardPart = card
-      ? `<div class="player-played-below played-wrapper" data-pid="${esc(p.id)}">${cardHTML(card, false, false, true)}</div>`
-      : '';
-    return `<div class="player-slot-top">${playerShadowHTML(p, gs)}${cardPart}</div>`;
-  }).join('');
+  // Joueurs du haut : shadow avec carte intégrée
+  document.getElementById('players-top').innerHTML = (pos.top||[]).map(p =>
+    `<div class="player-slot-top">${playerShadowHTML(p, gs)}</div>`
+  ).join('');
 
-  // Joueur de gauche : shadow à gauche, carte jouée à droite (vers le centre)
+  // Joueur de gauche
   const leftEl = document.getElementById('player-left');
-  if (pos.left) {
-    const card = gs.current_trick?.[pos.left.id];
-    const cardPart = card
-      ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.left.id)}">${cardHTML(card, false, false, true)}</div>`
-      : '';
-    leftEl.innerHTML = playerShadowHTML(pos.left, gs) + cardPart;
-  } else { leftEl.innerHTML = ''; }
+  leftEl.innerHTML = pos.left ? playerShadowHTML(pos.left, gs) : '';
 
-  // Joueur de droite : carte jouée à gauche (vers le centre), shadow à droite
+  // Joueur de droite
   const rightEl = document.getElementById('player-right');
-  if (pos.right) {
-    const card = gs.current_trick?.[pos.right.id];
-    const cardPart = card
-      ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.right.id)}">${cardHTML(card, false, false, true)}</div>`
-      : '';
-    rightEl.innerHTML = playerShadowHTML(pos.right, gs) + cardPart;
-  } else { rightEl.innerHTML = ''; }
+  rightEl.innerHTML = pos.right ? playerShadowHTML(pos.right, gs) : '';
 
   // Joueurs bas-gauche et bas-droite (layout 6 joueurs)
   const bottomSides = document.getElementById('players-bottom-sides');
@@ -1275,20 +1298,8 @@ function renderGame(gs) {
   const bRightEl = document.getElementById('player-bottom-right');
   if (pos.bottomLeft || pos.bottomRight) {
     bottomSides.style.display = 'flex';
-    if (pos.bottomLeft) {
-      const card = gs.current_trick?.[pos.bottomLeft.id];
-      const cardPart = card
-        ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.bottomLeft.id)}">${cardHTML(card, false, false, true)}</div>`
-        : '';
-      bLeftEl.innerHTML = playerShadowHTML(pos.bottomLeft, gs) + cardPart;
-    } else { bLeftEl.innerHTML = ''; }
-    if (pos.bottomRight) {
-      const card = gs.current_trick?.[pos.bottomRight.id];
-      const cardPart = card
-        ? `<div class="player-played-side played-wrapper" data-pid="${esc(pos.bottomRight.id)}">${cardHTML(card, false, false, true)}</div>`
-        : '';
-      bRightEl.innerHTML = playerShadowHTML(pos.bottomRight, gs) + cardPart;
-    } else { bRightEl.innerHTML = ''; }
+    bLeftEl.innerHTML  = pos.bottomLeft  ? playerShadowHTML(pos.bottomLeft, gs)  : '';
+    bRightEl.innerHTML = pos.bottomRight ? playerShadowHTML(pos.bottomRight, gs) : '';
   } else {
     bottomSides.style.display = 'none';
     bLeftEl.innerHTML = ''; bRightEl.innerHTML = '';
@@ -1300,17 +1311,15 @@ function renderGame(gs) {
   const trickEntries = Object.entries(gs.current_trick||{});
   document.getElementById('trick-label').textContent = trickEntries.length ? 'Pli en cours' : 'Aucune carte en jeu';
 
-  // Carte jouée par le joueur local → #my-played-area (au-dessus de la main)
+  // Carte jouée par le joueur local → #my-played-area (toujours visible, slot réservé)
   const myPlayedCard = gs.current_trick?.[S.me?.id];
   const myPlayedArea = document.getElementById('my-played-area');
   if (myPlayedCard) {
-    const wrap = document.createElement('div');
-    wrap.className = 'played-wrapper'; wrap.dataset.pid = S.me?.id;
-    wrap.innerHTML = cardHTML(myPlayedCard, false, false, true) + `<span class="played-by">Votre carte</span>`;
-    myPlayedArea.innerHTML = ''; myPlayedArea.appendChild(wrap);
-    myPlayedArea.classList.remove('hidden');
+    myPlayedArea.innerHTML =
+      `<div class="shadow-played played-wrapper" data-pid="${esc(S.me?.id)}">${cardHTML(myPlayedCard, false, false, true)}</div>`
+      + `<span class="played-by">Votre carte jouée</span>`;
   } else {
-    myPlayedArea.innerHTML = ''; myPlayedArea.classList.add('hidden');
+    myPlayedArea.innerHTML = `<div class="shadow-played empty played-wrapper" data-pid="${esc(S.me?.id)}"></div>`;
   }
 
   // Pile de défausse
@@ -1420,15 +1429,16 @@ function showTrickReview(msg) {
     const player = gs.players.find(p=>p.id===ppid);
     const isDiscard = discardedIds.has(card.id) || chainIds.has(card.id);
     const isWinner  = ppid === msg.winner_pid;
-    const cardEl = document.querySelector(`.played-wrapper[data-pid="${ppid}"] .card`);
-    if (cardEl) {
-      if (isWinner) cardEl.classList.add('winner-glow');
+    const slot = document.querySelector(`.played-wrapper[data-pid="${ppid}"]`);
+    const cardEl = slot?.querySelector('.card');
+    if (slot && cardEl) {
+      // Glow/fade on slot (box-shadow visible outside overflow:hidden card)
+      if (isWinner) slot.classList.add('winner-glow');
       else if (isDiscard) cardEl.classList.add('loser-fade');
       const badge = document.createElement('span');
       badge.className = 'trick-status ' + (isWinner ? 'winner' : isDiscard ? 'discard' : 'ret');
-      badge.textContent = isWinner ? `★ ${player?.username||ppid}` :
-                          isDiscard ? '✕ Défaussée' : '↩ Reprise';
-      cardEl.parentElement.insertBefore(badge, cardEl);
+      badge.textContent = isWinner ? `★ ${player?.username||ppid}` : isDiscard ? '✕' : '↩';
+      slot.appendChild(badge);
     }
   });
 
@@ -1489,15 +1499,15 @@ function animateTrickEnd(gs, msg) {
 
   Object.entries(gs.current_trick||{}).forEach(([pid, card]) => {
     const isDiscard = discardedIds.has(card.id) || chainIds.has(card.id);
-    const cardEl = document.querySelector(`.played-wrapper[data-pid="${pid}"] .card`);
-    if (!cardEl) return;
+    const slot = document.querySelector(`.played-wrapper[data-pid="${pid}"]`);
+    if (!slot) return;
     if (isDiscard && discardEl) {
-      flyCard(cardEl, discardEl);
+      flyCard(slot, discardEl);
     } else if (!isDiscard) {
       const destEl = pid === S.me?.id
         ? document.getElementById('hand-area')
         : document.querySelector(`.player-shadow[data-pid="${pid}"] .shadow-cards`);
-      if (destEl) flyCard(cardEl, destEl);
+      if (destEl) flyCard(slot, destEl);
     }
   });
 }
@@ -1527,8 +1537,7 @@ function closeRoundEnd() { document.getElementById('roundend-panel').classList.a
 function nextRound()     { wsSend({action:'new_round'}); }
 
 function renderGameover(gs) {
-  const panel = document.getElementById('gameover-panel');
-  panel.classList.remove('hidden');
+  showScreen('gameover-screen');
   const winningTeamIdx = gs.teams.findIndex(t => t.wins >= 2);
   const myTeamIdx = gs.teams.findIndex(t => t.members.some(m => m.id === S.me?.id));
   const iWon = winningTeamIdx !== -1 && winningTeamIdx === myTeamIdx;
@@ -1537,15 +1546,14 @@ function renderGameover(gs) {
   verdict.className = iWon ? 'win' : 'loss';
   const winSymbol = winningTeamIdx >= 0 ? (TEAM_SYMBOLS[winningTeamIdx] || `Éq.${winningTeamIdx+1}`) : '?';
   const winners = winningTeamIdx !== -1 ? gs.teams[winningTeamIdx].members.map(m=>esc(m.username)).join(', ') : '?';
-  document.getElementById('gameover-detail').innerHTML =
-    iWon
-      ? `Votre équipe ${winSymbol} remporte la partie !`
-      : `L'équipe ${winSymbol} (<strong>${winners}</strong>) remporte la partie.`;
+  document.getElementById('gameover-detail').innerHTML = iWon
+    ? `Votre équipe ${winSymbol} remporte la partie !`
+    : `L'équipe ${winSymbol} (<strong>${winners}</strong>) remporte la partie.`;
   document.getElementById('gameover-scores').textContent =
     gs.teams.map((t,i) => `${TEAM_SYMBOLS[i]||('Éq.'+(i+1))} : ${t.wins}/2`).join('  ·  ');
   document.getElementById('gameover-restart-btn').classList.toggle('hidden', gs.host_id !== S.me?.id);
 }
-function closeGameover() { document.getElementById('gameover-panel').classList.add('hidden'); }
+function closeGameover() {}
 
 // ─────────────────────────────────────────────────────────────────
 // INTERACTION — plateau intégré
@@ -1598,10 +1606,22 @@ function openInteraction(msg) {
     abMsg.textContent = '① Cliquez sur un joueur avec qui échanger.';
   } else if (itype === 'jalousie') {
     abMsg.textContent = 'Cliquez sur une carte adverse pour l\'échanger avec la vôtre.';
+    const skip = document.createElement('button'); skip.className='ab-btn';
+    skip.textContent = 'Passer l\'effet ▶';
+    skip.onclick = () => sendInteraction();
+    document.getElementById('ab-choices').appendChild(skip);
   } else if (itype === 'colere') {
     abMsg.textContent = 'Cliquez sur une carte pour la renvoyer en main.';
+    const skip = document.createElement('button'); skip.className='ab-btn';
+    skip.textContent = 'Passer l\'effet ▶';
+    skip.onclick = () => sendInteraction();
+    document.getElementById('ab-choices').appendChild(skip);
   } else if (itype === 'trahison') {
     abMsg.textContent = '① Cliquez sur une carte de votre main à donner.';
+    const skip = document.createElement('button'); skip.className='ab-btn';
+    skip.textContent = 'Passer l\'effet ▶';
+    skip.onclick = () => sendInteraction();
+    document.getElementById('ab-choices').appendChild(skip);
   } else if (itype === 'reve_response') {
     abMsg.textContent = 'Cliquez sur une carte de votre main à jouer devant l\'auteur du Rêve.';
   } else if (itype === 'chain_discard') {
@@ -1630,29 +1650,19 @@ function applyInteractionTargets() {
   }
 
   if (['jalousie','colere'].includes(itype)) {
-    // Cartes jouées des autres joueurs (dans les ombres ou trick-cards)
+    // Cibler le slot .shadow-played de chaque adversaire ayant joué
     document.querySelectorAll('.player-shadow').forEach(shadow => {
       const pid = shadow.dataset.pid;
       if (!pid || pid === S.me?.id) return;
       const card = gs.current_trick?.[pid];
-      const cardEl = shadow.querySelector('.shadow-played .card');
-      if (!card || !cardEl) return;
-      target(cardEl, () => {
+      const slot = shadow.querySelector('.shadow-played:not(.empty)');
+      if (!card || !slot) return;
+      target(slot, () => {
         _intState.selected = { target_card_id: card.id, target_pid: pid };
         sendInteraction();
       });
     });
-    document.querySelectorAll('.played-wrapper').forEach(wrap => {
-      const pid = wrap.dataset.pid;
-      if (!pid || pid === S.me?.id) return;
-      const card = gs.current_trick?.[pid];
-      const cardEl = wrap.querySelector('.card');
-      if (!card || !cardEl) return;
-      target(cardEl, () => {
-        _intState.selected = { target_card_id: card.id, target_pid: pid };
-        sendInteraction();
-      });
-    });
+    // Slot local (my-played-area) — exclu par le filtre pid === S.me?.id ci-dessus
 
   } else if (itype === 'trahison') {
     if (!_intState.selected.hand_card_id) {
@@ -1670,14 +1680,14 @@ function applyInteractionTargets() {
         });
       });
     } else {
-      // Étape 2 : cartes adverses (toutes dans #trick-cards via .played-wrapper)
-      document.querySelectorAll('.played-wrapper').forEach(wrap => {
-        const pid = wrap.dataset.pid;
+      // Étape 2 : slots adverses ayant joué
+      document.querySelectorAll('.player-shadow').forEach(shadow => {
+        const pid = shadow.dataset.pid;
         if (!pid || pid === S.me?.id) return;
         const card = gs.current_trick?.[pid];
-        const cardEl = wrap.querySelector('.card');
-        if (!card || !cardEl) return;
-        target(cardEl, () => {
+        const slot = shadow.querySelector('.shadow-played:not(.empty)');
+        if (!card || !slot) return;
+        target(slot, () => {
           _intState.selected.target_card_id = card.id;
           _intState.selected.target_pid     = pid;
           sendInteraction();
