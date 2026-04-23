@@ -964,6 +964,25 @@ function _startTimerDisplay(pid, seconds) {
   }, 1000);
 }
 
+function _startDealDelayDisplay(seconds) {
+  _clearTimer();
+  let secs = seconds;
+  const wrap = document.getElementById('timer-bar-wrap');
+  const bar  = document.getElementById('timer-bar');
+  const ti   = document.getElementById('turn-indicator');
+  if (!wrap || !bar) return;
+  wrap.classList.remove('hidden');
+  bar.classList.remove('urgent');
+  bar.style.width = '100%';
+  if (ti) ti.textContent = `🃏 Observation des cartes… ${secs}s`;
+  _timerInterval = setInterval(() => {
+    secs = Math.max(0, secs - 1);
+    bar.style.width = (secs / seconds * 100) + '%';
+    if (ti) ti.textContent = `🃏 Observation des cartes… ${secs}s`;
+    if (secs <= 0) _clearTimer();
+  }, 1000);
+}
+
 // Thème
 function _applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -1121,6 +1140,7 @@ function handleMsg(msg) {
   else if (msg.type==='interaction_required'){ _clearTimer(); openInteraction(msg); }
   else if (msg.type==='secret_reveal')       { showSecretReveal(msg); }
   else if (msg.type==='turn_timer')          { _startTimerDisplay(msg.pid, msg.seconds); }
+  else if (msg.type==='deal_delay')          { _startDealDelayDisplay(msg.seconds); }
 }
 
 // ─────────────────────────────────────────────────────────────────

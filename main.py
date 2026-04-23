@@ -418,7 +418,8 @@ class GameRoom:
 rooms: dict = {}
 sessions: dict = {}
 player_room: dict = {}
-BOT_NAMES = ["Arcana", "Sibyl", "Morrigan"]
+BOT_NAMES   = ["Arcana", "Sibyl", "Morrigan"]
+DEAL_DELAY  = 15   # secondes d'observation des cartes en début de manche
 
 # ─────────────────────────────────────────────────────────────────
 # WS HELPERS
@@ -513,6 +514,16 @@ async def _start_turn_timer(room: GameRoom):
 
     room._turn_timer_task = asyncio.create_task(_expire())
     await broadcast(room, {"type": "turn_timer", "pid": nxt, "seconds": room.turn_timer_seconds})
+
+async def _deal_delay_then_timer(room: GameRoom):
+    """Délai d'observation des cartes en début de manche, puis démarre le minuteur."""
+    try:
+        await broadcast(room, {"type": "deal_delay", "seconds": DEAL_DELAY})
+        await asyncio.sleep(DEAL_DELAY)
+    except asyncio.CancelledError:
+        return
+    if room.state == "playing":
+        await _start_turn_timer(room)
 
 # ─────────────────────────────────────────────────────────────────
 # INACTIVITY MONITOR
@@ -1114,7 +1125,8 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 await broadcast(room, {"type":"chat",
                     "msg": f"🔮 La partie commence{tag} ! {room.players[leader]['username']} ouvre."})
                 if room.dev_mode: asyncio.create_task(run_bots(room))
-                await _start_turn_timer(room)
+                _cancel_turn_timer(room)
+                room._turn_timer_task = asyncio.create_task(_deal_delay_then_timer(room))
 
             elif act == "play_card":
                 if room.state != "playing":
@@ -1410,7 +1422,8 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 await send_state(room)
                 await broadcast(room,{"type":"chat","msg":f"🔮 Manche {room.round_num} ! {room.players[leader]['username']} ouvre."})
                 if room.dev_mode: asyncio.create_task(run_bots(room))
-                await _start_turn_timer(room)
+                _cancel_turn_timer(room)
+                room._turn_timer_task = asyncio.create_task(_deal_delay_then_timer(room))
 
             elif act == "restart" and pid == room.host_id:
                 if room.state != "gameover": continue
