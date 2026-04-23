@@ -535,14 +535,14 @@ input:focus { border-color:var(--gold); }
   padding:.06rem .35rem; line-height:1.4; margin-left:.15rem;
 }
 .shadow-played {
-  width:calc(var(--cw) * 0.45); height:calc(var(--ch) * 0.45);
+  width:calc(var(--cw) * 0.65); height:calc(var(--ch) * 0.65);
   flex-shrink:0; position:relative; overflow:hidden;
   border-radius:calc(4px * var(--cs));
 }
 .shadow-played.empty { border:1px dashed var(--border); opacity:.35; }
 .shadow-played > .card {
   position:absolute; top:0; left:0;
-  transform:scale(0.45); transform-origin:top left;
+  transform:scale(0.65); transform-origin:top left;
   pointer-events:none;
 }
 .shadow-played .trick-status {
@@ -567,30 +567,11 @@ input:focus { border-color:var(--gold); }
 #my-played-area {
   display:flex; justify-content:center; align-items:center; padding:.1rem 0;
   flex-shrink:0; gap:.6rem; position:relative; z-index:10; background:var(--bg);
-  min-height:calc(var(--ch) * 0.45 + .2rem);
+  min-height:calc(var(--ch) * 0.65 + .2rem);
 }
 #my-played-area .played-by { font-size:.72rem; color:var(--text-dim); font-style:italic; }
 
 /* ── PILE DE DÉFAUSSE ── */
-.discard-area {
-  display:flex; flex-direction:column; align-items:center; gap:.2rem;
-}
-.discard-stack {
-  position:relative; width:calc(72px * var(--cs)); height:calc(104px * var(--cs));
-  border:1px dashed var(--border); border-radius:6px;
-  overflow:hidden;
-}
-.discard-stack .card {
-  position:absolute; top:0; left:0;
-  transform:scale(0.503); transform-origin:top left;
-  pointer-events:none;
-}
-.discard-badge {
-  position:absolute; top:-7px; right:-7px; background:var(--gold-dim); color:var(--bg);
-  border-radius:50%; width:17px; height:17px; font-size:.55rem; font-family:'Cinzel',serif;
-  display:flex; align-items:center; justify-content:center; z-index:2; font-weight:700;
-}
-.discard-label { font-size:.56rem; color:var(--text-dim); text-align:center; }
 
 
 /* ── ANIMATIONS ── */
@@ -731,12 +712,6 @@ input:focus { border-color:var(--gold); }
         <div id="table-center">
           <p id="trick-label" class="text-dim italic">Aucune carte en jeu</p>
           <div id="trick-cards"></div>
-          <div class="discard-area" id="discard-area" style="display:none">
-            <div class="discard-stack" id="discard-stack">
-              <div class="discard-badge" id="discard-badge">0</div>
-            </div>
-            <span class="discard-label">Défausse</span>
-          </div>
         </div>
         <div id="player-right"></div>
       </div>
@@ -1219,24 +1194,7 @@ function playerShadowHTML(p, gs) {
   </div>`;
 }
 
-function renderDiscardPile(gs) {
-  const pile = gs.discard_pile || [];
-  const area = document.getElementById('discard-area');
-  const stack = document.getElementById('discard-stack');
-  const badge = document.getElementById('discard-badge');
-  if (!pile.length) { area.style.display = 'none'; return; }
-  area.style.display = 'flex';
-  badge.textContent = pile.length;
-  const top = pile[pile.length - 1];
-  stack.querySelectorAll('.card').forEach(el => el.remove());
-  if (top) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = cardHTML(top, true, false, true); // face cachée
-    const c = tmp.firstElementChild;
-    c.style.pointerEvents = 'none';
-    stack.appendChild(c);
-  }
-}
+function renderDiscardPile() {}
 
 function renderGame(gs) {
   showScreen('game-screen');
