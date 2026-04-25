@@ -44,22 +44,26 @@
 @media (max-height: 640px) { :root { --cs: 0.55; } }
 
 [data-theme="light"] {
-  --bg:        #3a362f;
-  --surface:   #484038;
-  --border:    #5e5648;
-  --gold:      #d4a83a;
-  --gold-dim:  #a07828;
-  --text:      #e8e0d0;
-  --text-dim:  #a09880;
-  --rouge:     #d05040; --rouge-glow: #d0504044;
-  --bleu:      #4090c0; --bleu-glow:  #4090c044;
-  --vert:      #50a860; --vert-glow:  #50a86044;
-  --jaune:     #d09020; --jaune-glow: #d0902044;
-  --multi:     #9060c0; --multi-glow: #9060c044;
+  --bg:        #f0ece2;
+  --surface:   #e4ddd0;
+  --border:    #c0b49a;
+  --gold:      #6b4e00;
+  --gold-dim:  #9a7220;
+  --text:      #1c160c;
+  --text-dim:  #6a5535;
+  --rouge:     #8c0f1a; --rouge-glow: #8c0f1a40;
+  --bleu:      #0d3d8f; --bleu-glow:  #0d3d8f40;
+  --vert:      #14602a; --vert-glow:  #14602a40;
+  --jaune:     #7a4800; --jaune-glow: #7a480040;
+  --multi:     #521478; --multi-glow: #52147840;
 }
 [data-theme="light"] body::before {
-  background: radial-gradient(ellipse 90% 60% at 50% -10%, #4a3e2a 0%, transparent 65%);
+  background: radial-gradient(ellipse 90% 60% at 50% -10%, #d8ceb8 0%, transparent 65%);
 }
+[data-theme="light"] #action-bar    { background:var(--surface); }
+[data-theme="light"] #loi-notice    { background:#e8e4c0; border-color:#9a8820; color:#5a4400; }
+[data-theme="light"] .card.card-back { background:repeating-linear-gradient(45deg,#c0b8a8,#c0b8a8 6px,#cec6b4 6px,#cec6b4 12px); border-color:#a89878; }
+[data-theme="light"] .shadow-card-mini { background:repeating-linear-gradient(45deg,#b8b0a0,#b8b0a0 2px,#c8c0b0 2px,#c8c0b0 4px); border-color:#a0988a; }
 
 #theme-toggle {
   position: fixed; bottom: .75rem; left: .75rem; z-index: 1000;
@@ -315,6 +319,12 @@ input:focus { border-color:var(--gold); }
 .ab-btn:hover { border-color:var(--gold); background:#c8a84b12; }
 .ab-btn.selected { border-color:var(--gold); background:#c8a84b22; color:var(--gold); }
 
+/* Action-bar en mode trick-review : colonne centrée */
+#action-bar.tr-mode { flex-direction:column; align-items:center; }
+#action-bar.tr-mode #ab-title { font-size:.72rem; color:var(--text-dim); letter-spacing:.06em; width:100%; text-align:center; }
+#action-bar.tr-mode #ab-msg   { display:none; }
+#action-bar.tr-mode #ab-choices { width:100%; justify-content:center; }
+
 /* ── CIBLES INTERACTIVES (surbrillance plateau) ── */
 .int-target {
   cursor:pointer !important;
@@ -359,7 +369,19 @@ input:focus { border-color:var(--gold); }
 }
 #gameover-verdict.win  { color:var(--gold); text-shadow:0 0 40px rgba(200,168,75,.4); }
 #gameover-verdict.loss { color:var(--text-dim); }
+#gameover-inner { max-width:360px; gap:2rem; }
 #gameover-actions { display:flex; gap:.7rem; justify-content:center; flex-wrap:wrap; }
+/* Trick review cards in action-bar */
+#ab-cards { display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; margin:.2rem 0; width:100%; }
+.tr-card-entry { display:flex; flex-direction:column; align-items:center; gap:.15rem; }
+.tr-card-entry .shadow-played { border-color:rgba(255,255,255,.12); }
+.tr-winner .shadow-played { border-color:var(--gold); box-shadow:0 0 10px rgba(200,168,75,.5); }
+.tr-card-name { font-size:.66rem; color:var(--text-dim); font-family:'Cinzel',serif; max-width:calc(var(--cw)*0.65); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tr-winner .tr-card-name { color:var(--gold); }
+/* Hand glow when it's my turn */
+#my-hand.my-turn .card:not(.unplayable) {
+  box-shadow:0 0 14px rgba(200,168,75,.45); border-color:rgba(200,168,75,.45);
+}
 
 /* ── ADMIN MODAL (conservé) ── */
 
@@ -559,8 +581,8 @@ input:focus { border-color:var(--gold); }
 }
 
 /* ── CARTES JOUÉES POSITIONNELLES ── */
-.player-slot-top { display:flex; flex-direction:column; align-items:center; gap:.35rem; }
-.player-played-side .card, .player-played-below .card { pointer-events:none; }
+.player-slot-top  { display:flex; flex-direction:column; align-items:center; gap:.4rem; }
+.player-slot-side { display:flex; flex-direction:row; align-items:center; gap:.4rem; }
 .card.played-card:hover { transform:none; box-shadow:none; }
 
 /* Carte jouée par le joueur local, au-dessus de sa main */
@@ -710,7 +732,6 @@ input:focus { border-color:var(--gold); }
       <div id="table-middle">
         <div id="player-left"></div>
         <div id="table-center">
-          <p id="trick-label" class="text-dim italic">Aucune carte en jeu</p>
           <div id="trick-cards"></div>
         </div>
         <div id="player-right"></div>
@@ -722,13 +743,13 @@ input:focus { border-color:var(--gold); }
     </div>
     <div id="loi-notice" class="hidden"></div>
     <div id="action-bar" class="hidden">
+      <div id="ab-cards"></div>
       <span id="ab-title"></span>
       <span id="ab-msg"></span>
       <div id="ab-choices"></div>
     </div>
     <div id="my-played-area"></div>
     <div id="hand-area">
-      <p id="hand-label" class="text-dim">Votre main</p>
       <div id="my-hand"></div>
     </div>
     <div id="roundend-panel" class="hidden">
@@ -743,11 +764,9 @@ input:focus { border-color:var(--gold); }
 <div id="gameover-screen" class="hidden">
   <div id="gameover-inner">
     <div id="gameover-verdict"></div>
-    <div id="gameover-detail" class="text-dim" style="font-size:1rem;"></div>
-    <div id="gameover-scores" class="text-dim" style="font-size:.88rem;"></div>
     <div id="gameover-actions">
-      <button id="gameover-restart-btn" class="btn primary hidden" onclick="wsSend({action:'restart'})">↺ Nouvelle partie</button>
-      <button class="btn danger" onclick="showHome()">✕ Quitter la partie</button>
+      <button id="gameover-restart-btn" class="btn primary hidden" onclick="wsSend({action:'restart'})">↺ Rejouer</button>
+      <button class="btn" onclick="showHome()">Continuer</button>
     </div>
   </div>
 </div>
@@ -933,11 +952,11 @@ function _startDealDelayDisplay(seconds) {
   wrap.classList.remove('hidden');
   bar.classList.remove('urgent');
   bar.style.width = '100%';
-  if (ti) ti.textContent = `🃏 Observation des cartes… ${secs}s`;
+  if (ti) ti.textContent = `🃏 Observation des cartes — début dans ${secs}s`;
   _timerInterval = setInterval(() => {
     secs = Math.max(0, secs - 1);
     bar.style.width = (secs / seconds * 100) + '%';
-    if (ti) ti.textContent = `🃏 Observation des cartes… ${secs}s`;
+    if (ti) ti.textContent = `🃏 Observation des cartes — début dans ${secs}s`;
     if (secs <= 0) _clearTimer();
   }, 1000);
 }
@@ -1173,7 +1192,6 @@ function playerShadowHTML(p, gs) {
   const myTeam = gs.teams.find(t => t.members.some(m => m.id === S.me?.id));
   const sameTeam = myTeam?.members.some(m => m.id === p.id);
   const isNext = gs.next_to_play === p.id;
-  const playedCard = gs.current_trick?.[p.id];
   const count = Math.min(p.hand_count, 5);
   const sym = teamSymbol(p.id, gs);
   const cls = ['player-shadow', isNext ? 'my-turn-soon' : '', sameTeam ? 'same-team' : ''].filter(Boolean).join(' ');
@@ -1182,16 +1200,19 @@ function playerShadowHTML(p, gs) {
   const cardsRow = `<div class="shadow-cards">${miniCards}<span class="shadow-count">${p.hand_count}</span></div>`;
   const arrow = isNext ? `<span class="turn-arrow">▶</span>` : '';
   const symTag = sym ? `<span class="team-sym">${sym}</span>` : '';
-  const playedSlot = playedCard
-    ? `<div class="shadow-played played-wrapper" data-pid="${esc(p.id)}">${cardHTML(playedCard, false, false, true)}</div>`
-    : `<div class="shadow-played empty played-wrapper" data-pid="${esc(p.id)}"></div>`;
   return `<div class="${cls}" data-pid="${esc(p.id)}">
     <div class="shadow-info">
       <div class="shadow-name">${esc(p.username)}${p.is_bot?' 🤖':''}${symTag}${arrow}</div>
       ${cardsRow}
     </div>
-    ${playedSlot}
   </div>`;
+}
+
+function cardSlotHTML(p, gs) {
+  const playedCard = gs.current_trick?.[p.id];
+  return playedCard
+    ? `<div class="shadow-played played-wrapper" data-pid="${esc(p.id)}">${cardHTML(playedCard, false, false, true)}</div>`
+    : `<div class="shadow-played empty played-wrapper" data-pid="${esc(p.id)}"></div>`;
 }
 
 function renderDiscardPile() {}
@@ -1204,7 +1225,7 @@ function renderGame(gs) {
   const gcInfo = document.getElementById('gc-info');
   const gcActs = document.getElementById('gc-actions');
   const teamScores = (gs.teams||[]).map((t,i) =>
-    `${TEAM_SYMBOLS[i]||('Éq.'+(i+1))} ${'★'.repeat(t.wins)}${'☆'.repeat(Math.max(0,2-t.wins))}`
+    `${TEAM_SYMBOLS[i]||('Éq.'+(i+1))} ${'●'.repeat(t.wins)}${'○'.repeat(Math.max(0,2-t.wins))}`
   ).join('  ');
   gcInfo.textContent = `M${gs.round_num}  ${teamScores}`;
   gcActs.innerHTML = '';
@@ -1237,18 +1258,22 @@ function renderGame(gs) {
   // Joueurs et cartes jouées positionnées autour de la table
   const pos = getPlayerPositions(gs);
 
-  // Joueurs du haut : shadow avec carte intégrée
+  // Joueurs du haut : shadow au-dessus, carte en dessous (flex-col)
   document.getElementById('players-top').innerHTML = (pos.top||[]).map(p =>
-    `<div class="player-slot-top">${playerShadowHTML(p, gs)}</div>`
+    `<div class="player-slot-top">${playerShadowHTML(p, gs)}${cardSlotHTML(p, gs)}</div>`
   ).join('');
 
-  // Joueur de gauche
+  // Joueur de gauche : shadow à gauche, carte à droite (flex-row)
   const leftEl = document.getElementById('player-left');
-  leftEl.innerHTML = pos.left ? playerShadowHTML(pos.left, gs) : '';
+  leftEl.innerHTML = pos.left
+    ? `<div class="player-slot-side">${playerShadowHTML(pos.left, gs)}${cardSlotHTML(pos.left, gs)}</div>`
+    : '';
 
-  // Joueur de droite
+  // Joueur de droite : carte à gauche, shadow à droite (flex-row, ordre inversé)
   const rightEl = document.getElementById('player-right');
-  rightEl.innerHTML = pos.right ? playerShadowHTML(pos.right, gs) : '';
+  rightEl.innerHTML = pos.right
+    ? `<div class="player-slot-side">${cardSlotHTML(pos.right, gs)}${playerShadowHTML(pos.right, gs)}</div>`
+    : '';
 
   // Joueurs bas-gauche et bas-droite (layout 6 joueurs)
   const bottomSides = document.getElementById('players-bottom-sides');
@@ -1256,26 +1281,26 @@ function renderGame(gs) {
   const bRightEl = document.getElementById('player-bottom-right');
   if (pos.bottomLeft || pos.bottomRight) {
     bottomSides.style.display = 'flex';
-    bLeftEl.innerHTML  = pos.bottomLeft  ? playerShadowHTML(pos.bottomLeft, gs)  : '';
-    bRightEl.innerHTML = pos.bottomRight ? playerShadowHTML(pos.bottomRight, gs) : '';
+    bLeftEl.innerHTML  = pos.bottomLeft
+      ? `<div class="player-slot-side">${playerShadowHTML(pos.bottomLeft, gs)}${cardSlotHTML(pos.bottomLeft, gs)}</div>`
+      : '';
+    bRightEl.innerHTML = pos.bottomRight
+      ? `<div class="player-slot-side">${cardSlotHTML(pos.bottomRight, gs)}${playerShadowHTML(pos.bottomRight, gs)}</div>`
+      : '';
   } else {
     bottomSides.style.display = 'none';
     bLeftEl.innerHTML = ''; bRightEl.innerHTML = '';
   }
 
-  // Centre : label du pli (les cartes sont désormais au bord, pas au centre)
-  const tc = document.getElementById('trick-cards');
-  tc.innerHTML = '';
-  const trickEntries = Object.entries(gs.current_trick||{});
-  document.getElementById('trick-label').textContent = trickEntries.length ? 'Pli en cours' : 'Aucune carte en jeu';
+  // Centre : vide (les cartes sont au bord, pas au centre)
+  document.getElementById('trick-cards').innerHTML = '';
 
   // Carte jouée par le joueur local → #my-played-area (toujours visible, slot réservé)
   const myPlayedCard = gs.current_trick?.[S.me?.id];
   const myPlayedArea = document.getElementById('my-played-area');
   if (myPlayedCard) {
     myPlayedArea.innerHTML =
-      `<div class="shadow-played played-wrapper" data-pid="${esc(S.me?.id)}">${cardHTML(myPlayedCard, false, false, true)}</div>`
-      + `<span class="played-by">Votre carte jouée</span>`;
+      `<div class="shadow-played played-wrapper" data-pid="${esc(S.me?.id)}">${cardHTML(myPlayedCard, false, false, true)}</div>`;
   } else {
     myPlayedArea.innerHTML = `<div class="shadow-played empty played-wrapper" data-pid="${esc(S.me?.id)}"></div>`;
   }
@@ -1294,8 +1319,9 @@ function renderGame(gs) {
   const me = gs.players.find(p=>p.id===S.me?.id);
   const myHand = document.getElementById('my-hand');
   myHand.innerHTML='';
-  const myTurn = ntp===S.me?.id && gs.state==='playing';
+  const myTurn = ntp===S.me?.id && gs.state==='playing' && !gs.deal_delay_active;
   const played = gs.current_trick && S.me?.id in gs.current_trick;
+  myHand.classList.toggle('my-turn', myTurn && !played);
   if (me?.hand) {
     me.hand.forEach(card=>{
       if (card.back) {
@@ -1400,11 +1426,32 @@ function showTrickReview(msg) {
     }
   });
 
-  // Afficher résultat dans l'action-bar + bouton Continuer pour l'hôte
+  // Afficher résultat dans l'action-bar : cartes défaussées + bouton Continuer
   const bar = document.getElementById('action-bar');
-  document.getElementById('ab-title').textContent = `✅ ${esc(msg.winner_name)} remporte le pli !`;
-  const effects = (msg.messages||[]).join(' · ');
-  document.getElementById('ab-msg').textContent = effects || '';
+  bar.classList.add('tr-mode');
+  const count = (msg.discarded||[]).length + Object.keys(msg.chain_discards||{}).length;
+  document.getElementById('ab-title').textContent = count > 1 ? 'Cartes défaussées' : 'Carte défaussée';
+  document.getElementById('ab-msg').textContent = '';
+
+  // Liste des cartes défaussées (winner + effets + chaînes)
+  const abCards = document.getElementById('ab-cards');
+  abCards.innerHTML = '';
+  const allDiscarded = [...(msg.discarded||[])];
+  Object.values(msg.chain_discards||{}).forEach(c => {
+    if (!allDiscarded.find(d => d.id === c.id)) allDiscarded.push(c);
+  });
+  allDiscarded.forEach(card => {
+    const ppid = Object.keys(gs?.current_trick||{}).find(p => (gs.current_trick||{})[p]?.id === card.id);
+    const player = gs?.players.find(p => p.id === ppid);
+    const isWinner = ppid === msg.winner_pid;
+    const entry = document.createElement('div');
+    entry.className = 'tr-card-entry' + (isWinner ? ' tr-winner' : '');
+    entry.innerHTML =
+      `<div class="shadow-played">${cardHTML(card, false, false, true)}</div>` +
+      `<div class="tr-card-name">${isWinner ? '♛ ' : ''}${esc(player?.username || ppid || '?')}</div>`;
+    abCards.appendChild(entry);
+  });
+
   const choices = document.getElementById('ab-choices');
   choices.innerHTML = '';
   if (gs?.host_id === S.me?.id) {
@@ -1475,6 +1522,9 @@ function closeTrickReview() {
   document.querySelectorAll('.trick-status').forEach(el => el.remove());
   document.querySelectorAll('.winner-glow,.loser-fade').forEach(el =>
     el.classList.remove('winner-glow','loser-fade'));
+  const abCards = document.getElementById('ab-cards');
+  if (abCards) abCards.innerHTML = '';
+  document.getElementById('action-bar')?.classList.remove('tr-mode');
 }
 
 function continueTrick() {
@@ -1502,13 +1552,6 @@ function renderGameover(gs) {
   const verdict = document.getElementById('gameover-verdict');
   verdict.textContent = iWon ? '✦ Victoire !' : '✕ Défaite';
   verdict.className = iWon ? 'win' : 'loss';
-  const winSymbol = winningTeamIdx >= 0 ? (TEAM_SYMBOLS[winningTeamIdx] || `Éq.${winningTeamIdx+1}`) : '?';
-  const winners = winningTeamIdx !== -1 ? gs.teams[winningTeamIdx].members.map(m=>esc(m.username)).join(', ') : '?';
-  document.getElementById('gameover-detail').innerHTML = iWon
-    ? `Votre équipe ${winSymbol} remporte la partie !`
-    : `L'équipe ${winSymbol} (<strong>${winners}</strong>) remporte la partie.`;
-  document.getElementById('gameover-scores').textContent =
-    gs.teams.map((t,i) => `${TEAM_SYMBOLS[i]||('Éq.'+(i+1))} : ${t.wins}/2`).join('  ·  ');
   document.getElementById('gameover-restart-btn').classList.toggle('hidden', gs.host_id !== S.me?.id);
 }
 function closeGameover() {}
@@ -1613,7 +1656,7 @@ function applyInteractionTargets() {
       const pid = shadow.dataset.pid;
       if (!pid || pid === S.me?.id) return;
       const card = gs.current_trick?.[pid];
-      const slot = shadow.querySelector('.shadow-played:not(.empty)');
+      const slot = document.querySelector(`.shadow-played:not(.empty)[data-pid="${pid}"]`);
       if (!card || !slot) return;
       target(slot, () => {
         _intState.selected = { target_card_id: card.id, target_pid: pid };
@@ -1643,7 +1686,7 @@ function applyInteractionTargets() {
         const pid = shadow.dataset.pid;
         if (!pid || pid === S.me?.id) return;
         const card = gs.current_trick?.[pid];
-        const slot = shadow.querySelector('.shadow-played:not(.empty)');
+        const slot = document.querySelector(`.shadow-played:not(.empty)[data-pid="${pid}"]`);
         if (!card || !slot) return;
         target(slot, () => {
           _intState.selected.target_card_id = card.id;

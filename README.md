@@ -131,15 +131,15 @@ Pour conserver les données après un `git pull` : exportez avant, puis importez
 
 ## Interface
 
-Toutes les actions se déroulent directement sur le plateau de jeu, sans popup ni fenêtre modale :
+Toutes les actions se déroulent directement sur le plateau de jeu :
 
-- **Résultat du pli** : affiché dans le panel équipes (gauche), au-dessus des boutons d'action
-- **Effets interactifs** (La Jalousie, La Colère, La Trahison, Le Rêve, L'Absolu, La Loi, Le Secret) : une barre contextuelle apparaît au-dessus de la main ; les éléments du plateau (cartes adverses, ombres de joueurs, cartes en main) s'illuminent et deviennent cliquables directement
-- **Main révélée** (Le Secret) : affichée dans le chat
+- **Résultat du pli** : barre au-dessus de la main affichant les cartes défaussées avec le nom du joueur qui les a posées et une couronne ♛ sur le gagnant du pli
+- **Observation des cartes** : au début de chaque manche, 15 secondes d'observation obligatoires (les cartes sont bloquées, une barre de progression compte à rebours)
+- **Effets interactifs** (La Jalousie, La Colère, La Trahison, Le Rêve, L'Absolu, La Loi, Le Secret) : une barre contextuelle apparaît au-dessus de la main ; les éléments du plateau s'illuminent et deviennent cliquables
 - **Fin de manche** : panneau centré sur le plateau, non plein-écran
-- **Cartes jouées positionnées** autour du plateau : joueur gauche → carte à sa droite ; joueur droit → carte à sa gauche ; joueurs du haut → carte en dessous de leur ombre ; joueur local → carte au-dessus de sa main
-- **Joueur dont c'est le tour** : ombre entourée d'or avec indicateur ▶ clignotant
-- **Nombre de cartes** affiché en badge doré à côté des mini-cartes de chaque ombre
-- **Panel équipes** (colonne gauche) agrandi et plus lisible ; bouton **Quitter la partie** en bas
-- **Reprendre une partie en cours** : si vous quittez une partie puis revenez au menu, un bouton "Reprendre" apparaît automatiquement avec le code du salon
-- **Bouton thème** (clair/sombre) positionné en bas à gauche pour éviter tout chevauchement
+- **Fin de partie** : écran dédié avec l'équipe gagnante et l'équipe perdante (avec les noms des joueurs)
+- **Score des équipes** : ● pour chaque manche gagnée, ○ pour chaque manche restante (deux par équipe pour gagner la partie)
+- **Tour du joueur** : ombre entourée d'or avec indicateur ▶ + lueur dorée sur les cartes en main
+- **Cartes jouées** autour du plateau : joueur gauche → carte à sa droite ; joueur droit → carte à sa gauche ; joueurs du haut → carte en dessous de leur ombre ; joueur local → carte au-dessus de sa main
+- **Reprendre une partie en cours** : bouton "Reprendre" automatique à l'écran d'accueil si vous avez quitté une partie
+- **Thème clair / sombre** : toggle en haut à droite, persisté localement

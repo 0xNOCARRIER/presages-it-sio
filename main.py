@@ -253,7 +253,9 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
             pass
         elif eff in ("highest_own", "lowest_own"):
             col = card["color"]
-            same = [(p2, c2) for p2, c2 in played.items() if col in effective_colors(c2)]
+            # La Peur (unbreakable) est immune à tous les effets de défausse
+            same = [(p2, c2) for p2, c2 in played.items()
+                    if col in effective_colors(c2) and c2["effect_type"] != "unbreakable"]
             if same:
                 target = (max if eff == "highest_own" else min)(same, key=lambda x: x[1]["value"])
                 to_discard.add(target[1]["id"])
@@ -279,11 +281,17 @@ def resolve_trick(played: dict, hands: dict, orgueil_pid_override=None) -> dict:
             if any(c2["is_absolu"] for c2 in cards):
                 to_discard.add(cid)
         elif eff == "lowest_all":
-            bot = min(played.items(), key=lambda x: x[1]["value"])
-            to_discard.add(bot[1]["id"])
-            msgs.append(f"→ L'Harmonie défausse {bot[1]['name']} (plus faible en jeu).")
+            # La Peur (unbreakable) est immune
+            candidates = [(p2, c2) for p2, c2 in played.items()
+                          if c2["effect_type"] != "unbreakable"]
+            if candidates:
+                bot = min(candidates, key=lambda x: x[1]["value"])
+                to_discard.add(bot[1]["id"])
+                msgs.append(f"→ L'Harmonie défausse {bot[1]['name']} (plus faible en jeu).")
         elif eff == "all_jaune":
-            jaunes = [c2 for c2 in cards if "jaune" in effective_colors(c2)]
+            # La Peur (unbreakable) est immune
+            jaunes = [c2 for c2 in cards
+                      if "jaune" in effective_colors(c2) and c2["effect_type"] != "unbreakable"]
             for jc in jaunes:
                 to_discard.add(jc["id"])
             if jaunes:
@@ -377,6 +385,7 @@ class GameRoom:
         self._turn_timer_task    = None  # asyncio Task de minuterie
         self.last_activity_at    = time.time()  # pour le monitor d'inactivité
         self.pending_chain_discards = {}  # {pid: [eligible_cards]} pour La Chance interactive
+        self.deal_delay_active     = False  # bloque les actions pendant l'observation de début de manche
 
     def add_player(self, pid, username):
         self.players[pid] = {"username": username, "ws": None}
@@ -403,10 +412,13 @@ class GameRoom:
             if pid not in self.players:
                 continue
             hand = self.hands.get(pid, [])
-            hand_data = hand if pid == for_pid else [{"id": c["id"], "back": True} for c in hand]
+            # La carte jouée reste dans room.hands pendant le pli mais ne doit pas apparaître en main
+            played_id = self.current_trick.get(pid, {}).get("id")
+            visible_hand = [c for c in hand if c["id"] != played_id] if played_id else hand
+            hand_data = visible_hand if pid == for_pid else [{"id": c["id"], "back": True} for c in visible_hand]
             players_info.append({
                 "id": pid, "username": self.players[pid]["username"],
-                "hand": hand_data, "hand_count": len(hand),
+                "hand": hand_data, "hand_count": len(visible_hand),
                 "is_you": pid == for_pid,
                 "absolu": self.absolu_dealt.get(pid),
                 "is_bot": pid.startswith("bot_"),
@@ -424,6 +436,7 @@ class GameRoom:
             "last_trick": self.last_trick,
             "discard_pile": self.discard_pile[-20:],
             "turn_timer_seconds": self.turn_timer_seconds,
+            "deal_delay_active": self.deal_delay_active,
         }
 
 rooms: dict = {}
@@ -528,11 +541,16 @@ async def _start_turn_timer(room: GameRoom):
 
 async def _deal_delay_then_timer(room: GameRoom):
     """Délai d'observation des cartes en début de manche, puis démarre le minuteur."""
+    room.deal_delay_active = True
+    await send_state(room)
     try:
         await broadcast(room, {"type": "deal_delay", "seconds": DEAL_DELAY})
         await asyncio.sleep(DEAL_DELAY)
     except asyncio.CancelledError:
+        room.deal_delay_active = False
         return
+    room.deal_delay_active = False
+    await send_state(room)
     if room.state == "playing":
         await _start_turn_timer(room)
 
@@ -1158,8 +1176,8 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                 room._turn_timer_task = asyncio.create_task(_deal_delay_then_timer(room))
 
             elif act == "play_card":
-                if room.state != "playing":
-                    await websocket.send_json({"type":"error","msg":"Ce n'est pas le moment de jouer."}); continue
+                if room.state != "playing" or room.deal_delay_active:
+                    await websocket.send_json({"type":"error","msg":"Attendez la fin de l'observation des cartes."}); continue
                 if room._next_to_play() != pid:
                     await websocket.send_json({"type":"error","msg":"Ce n'est pas votre tour."}); continue
                 cid  = raw.get("card_id")
@@ -1203,6 +1221,8 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         room.current_trick[tpid] = my_card
                         room.hands[pid]  = [tc  if c["id"] == my_card["id"] else c for c in room.hands[pid]]
                         room.hands[tpid] = [my_card if c["id"] == tc["id"] else c for c in room.hands[tpid]]
+                        tc["_owner"] = pid
+                        my_card["_owner"] = tpid
                         await broadcast(room, {"type":"chat","msg":f"🔀 La Jalousie : {username} échange avec {room.players[tpid]['username']}."})
                     room.pending_interaction = None; room.state = "playing"
                     if len(room.current_trick) == len(room.players):
@@ -1259,6 +1279,7 @@ async def ws_endpoint(websocket: WebSocket, room_id: str,
                         room.current_trick[tpid] = my_card
                         room.hands[pid]  = [tc if c["id"] == my_cid else c for c in room.hands[pid]]
                         room.hands[tpid] = [my_card if c["id"] == tc["id"] else c for c in room.hands[tpid]]
+                        my_card["_owner"] = tpid
                         await broadcast(room,{"type":"chat","msg":f"🗡️ La Trahison : {username} substitue une carte à {room.players[tpid]['username']}."})
                         # Si La Loi revient en main, sa contrainte tombe (regles.md §La Trahison)
                         if tc["effect_type"] == "loi" and room.loi_constraint:
